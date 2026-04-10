@@ -1,4 +1,4 @@
-// This file is part of the Prowl Game Engine
+// This file is part of the Vortex Event System
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
 using System;
@@ -7,7 +7,7 @@ namespace Vortex;
 
 /// <summary>
 /// Configurable logging hooks for the event system.
-/// The hosting application (e.g. <c>Prowl.Runtime</c>) should assign
+/// The hosting application should assign
 /// <see cref="LogWarning"/> and <see cref="LogError"/> during startup
 /// so that diagnostic messages are routed through the engine's logging
 /// infrastructure.

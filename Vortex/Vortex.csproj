@@ -10,11 +10,6 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="Prowl.Runtime" />
-    <InternalsVisibleTo Include="Prowl.Runtime.Test" />
-  </ItemGroup>
-
   <!-- Source generator for [EventDomain] classes -->
   <ItemGroup>
     <ProjectReference Include="..\Vortex.Generators\Vortex.Generators.csproj"

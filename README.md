@@ -2,7 +2,7 @@
 
 **A high-performance, type-safe event system for .NET with source-generated event domains.**
 
-Vortex provides a robust publish/subscribe event infrastructure built around enum-keyed event managers, copy-on-write snapshots for lock-free invocation, priority-ordered handlers, and a Roslyn source generator that eliminates boilerplate. Originally developed for the [Prowl Game Engine](https://github.com/ProwlEngine/Prowl), Vortex is designed for latency-sensitive applications such as game engines, simulations, and real-time systems.
+Vortex provides a robust publish/subscribe event infrastructure built around enum-keyed event managers, copy-on-write snapshots for lock-free invocation, priority-ordered handlers, and a Roslyn source generator that eliminates boilerplate. Vortex is designed for latency-sensitive applications such as game engines, simulations, and real-time systems.
 
 ---
 
@@ -168,4 +168,4 @@ GameEvents.SubscribeOnValidate(args =>
 
 ## License
 
-This project is part of the Prowl Game Engine and is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
