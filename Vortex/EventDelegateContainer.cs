@@ -72,7 +72,7 @@ public string? SourceMember { get; private set; }
 /// </summary>
 public string SourceDescription =>
     SourceFile is not null
-        ? $"{System.IO.Path.GetFileName(SourceFile)}:{SourceLine} ({SourceMember})"
+        ? $"{SourceFile}:{SourceLine} ({SourceMember})"
         : "unknown";
 
     public void Link(Event<T> @event)
@@ -95,7 +95,7 @@ public string SourceDescription =>
         : this(eventType, priority)
     {
 #if DEBUG
-        SourceFile = sourceFile;
+        SourceFile = sourceFile is not null ? System.IO.Path.GetFileName(sourceFile) : null;
         SourceLine = sourceLine;
         SourceMember = sourceMember;
 #endif

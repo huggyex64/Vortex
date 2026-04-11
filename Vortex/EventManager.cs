@@ -96,7 +96,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
 
     /// <summary>
     /// Returns the <see cref="Event{T}"/> for the given enum value,
-    /// creating it atomically on first access via <see cref="ConcurrentDictionary{TKey,TValue}.GetOrAdd"/>.
+    /// creating it atomically on first access via <see cref="ConcurrentDictionary{TKey,TValue}.GetOrAdd(TKey, Func{TKey,TValue})"/>.
     /// </summary>
     private Event<T> GetOrCreateEvent(T eventType)
     {
@@ -247,9 +247,15 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// </summary>
     public EventDelegateContainer<T, TArgs> AddNewDelegate<TArgs>(
         T eventType, Action<TArgs> eventDelegate, int priority = 0,
+#if DEBUG
         [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
         [CallerMemberName] string? sourceMember = null
+#else
+        string? sourceFile = null,
+        int sourceLine = 0,
+        string? sourceMember = null
+#endif
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -272,9 +278,15 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// </summary>
     public EventDelegateContainer<T, Unit> AddNewDelegate(
         T eventType, Action eventDelegate, int priority = 0,
+#if DEBUG
         [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
         [CallerMemberName] string? sourceMember = null
+#else
+        string? sourceFile = null,
+        int sourceLine = 0,
+        string? sourceMember = null
+#endif
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -299,9 +311,15 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// </summary>
     public AsyncEventDelegateContainer<T, TArgs> AddNewAsyncDelegate<TArgs>(
         T eventType, Func<TArgs, Task> eventDelegate, int priority = 0,
+#if DEBUG
         [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
         [CallerMemberName] string? sourceMember = null
+#else
+        string? sourceFile = null,
+        int sourceLine = 0,
+        string? sourceMember = null
+#endif
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -324,9 +342,15 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// </summary>
     public AsyncEventDelegateContainer<T, Unit> AddNewAsyncDelegate(
         T eventType, Func<Task> eventDelegate, int priority = 0,
+#if DEBUG
         [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
         [CallerMemberName] string? sourceMember = null
+#else
+        string? sourceFile = null,
+        int sourceLine = 0,
+        string? sourceMember = null
+#endif
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

@@ -61,8 +61,8 @@ public class Event<T> where T : struct, Enum
     /// <summary>
     /// Per-<c>TArgs</c> cached factory delegates that build strongly typed
     /// <c>EventDelegateContainer&lt;T, TArgs&gt;[]</c> from a list of base containers.
-    /// Avoids repeated <see cref="Array.CreateInstance"/> and per-element
-    /// <see cref="Array.SetValue"/> overhead.
+    /// Avoids repeated <see cref="Array.CreateInstance(Type, int)"/> and per-element
+    /// <see cref="Array.SetValue(object, int)"/> overhead.
     /// </summary>
     private static readonly ConcurrentDictionary<Type, Func<List<EventDelegateContainer<T>>, object>> s_arrayBuilders = new();
 
@@ -457,7 +457,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Generic helper invoked through a cached delegate.  Creates a strongly typed
-    /// array and populates it with simple reference casts — no <see cref="Array.SetValue"/>
+    /// array and populates it with simple reference casts — no <see cref="Array.SetValue(object, int)"/>
     /// overhead.
     /// </summary>
     private static object BuildTypedArray<TArgs>(List<EventDelegateContainer<T>> list)
@@ -477,7 +477,9 @@ public class Event<T> where T : struct, Enum
     {
         MethodInfo openMethod = typeof(Event<T>)
             .GetMethod(nameof(BuildTypedArray), BindingFlags.NonPublic | BindingFlags.Static)!;
+#pragma warning disable IL3050 // MakeGenericMethod: the closed generic is only over reference-compatible types already loaded.
         MethodInfo closedMethod = openMethod.MakeGenericMethod(argsType);
+#pragma warning restore IL3050
         return (Func<List<EventDelegateContainer<T>>, object>)
             Delegate.CreateDelegate(typeof(Func<List<EventDelegateContainer<T>>, object>), closedMethod);
     }
