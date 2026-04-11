@@ -1,12 +1,12 @@
-# ⚡ Vortex
+# Vortex
 
-### The last event system your .NET project will ever need.
+### A high-performance, source-generated event system for .NET.
 
-> **Zero-allocation invocation. Compile-time codegen. One attribute and you're done.**
+> **Zero-allocation invocation. Compile-time code generation. One attribute to define an entire event domain.**
 
-Vortex is a **high-performance, source-generated publish/subscribe event system** for .NET that turns a few lines of declaration into a fully wired, type-safe, priority-ordered event infrastructure — no manual wiring, no reflection, no runtime overhead.
+Vortex is a **publish/subscribe event infrastructure** for .NET that turns a handful of field declarations into a fully wired, type-safe, priority-ordered event pipeline — with no manual wiring, no reflection, and no runtime overhead.
 
-Whether you're building a **game engine**, a **real-time simulation**, a **modular plugin architecture**, or just want events that *don't suck*, Vortex delivers the fastest, cleanest event pipeline available on .NET today.
+Built for **game engines**, **real-time simulations**, **plugin architectures**, and any .NET application where event dispatch sits on the hot path, Vortex combines the ergonomics of native C# events with the performance characteristics of hand-optimized code — generated entirely at compile time.
 
 ---
 
@@ -24,31 +24,31 @@ Whether you're building a **game engine**, a **real-time simulation**, a **modul
 | AOT / trimming | 🟡 Depends | ❌ Often broken | ✅ **Fully compatible** |
 | Diagnostics | ❌ None | ❌ Rarely | ✅ **Caller-info tracing in DEBUG** |
 
-**Stop wiring events by hand.** Let the compiler do it for you — faster, safer, and with zero boilerplate.
+Vortex is designed to give you the best of all three worlds: the type safety of native events, the flexibility of an event bus, and the performance of hand-rolled dispatch code — without writing any of it yourself.
 
 ---
 
-## ✨ Features
+## Features
 
-- **🔧 Source-Generated Event Domains** — Slap `[EventDomain]` on a class, declare your `EventKey` fields, and the Roslyn generator does the rest: enums, typed `Invoke` / `Subscribe` methods, `+=` / `-=` accessors, and global broadcast helpers — all emitted at compile time with full IntelliSense support.
-- **🛡️ Type-Safe Argument Contracts** — Annotate events with `[EventArgs(typeof(T))]` and never worry about type mismatches again. Wrong handler signature? Instant exception on subscribe. Wrong invocation type? Caught and logged before it can do damage.
-- **📊 Priority-Ordered Handlers** — Every handler carries an integer priority. Lower values execute first. No guessing, no race conditions — just clean, deterministic execution order you can reason about.
-- **🚀 Zero-Allocation Invocation** — Handler lists use a copy-on-write strategy: snapshots are rebuilt into flat arrays *only* when subscriptions change. The hot path is a tight array loop with **zero allocations and zero locks**.
-- **🛑 Cancellable Events** — Implement `ICancellable` on your args and any handler can halt the chain. Perfect for validation pipelines, permission checks, and interceptor patterns.
-- **⚡ Sync & Async in One Pipeline** — Mix `Action<T>` and `Func<T, Task>` handlers freely in the same priority chain. Call `InvokeAsync` when you need to properly `await` the async ones.
-- **📦 Batched Mutations** — Subscribing hundreds of handlers at startup? Wrap it in `BeginBatch()` / `EndBatch()` and the snapshot rebuilds *once* instead of N times.
-- **🌐 Global Broadcast** — Mark a domain as `Global` and fire events across every active instance with a single `GlobalInvoke` call. Ideal for cross-system communication without tight coupling.
-- **♻️ IDisposable Subscriptions** — Every `Subscribe` returns a disposable handle. Use `using` blocks or explicit `Dispose()` for leak-free, deterministic cleanup.
-- **🔍 Rich DEBUG Diagnostics** — In debug builds, every handler registration captures `[CallerFilePath]` and `[CallerLineNumber]`. Slow handlers, type mismatches, and sync-over-async calls are flagged with full source context so you find bugs *before* your players do.
-- **💎 AOT & Trimming Ready** — Marked `IsAotCompatible` from day one. No reflection, no `Activator.CreateInstance`, no surprises when you publish with Native AOT or trimmed deployments.
+- **Source-Generated Event Domains** — Apply `[EventDomain]` to a class and declare `EventKey` fields. The Roslyn incremental generator emits enums, typed `Invoke` / `Subscribe` methods, `+=` / `-=` accessors, and global broadcast helpers — all at compile time with full IntelliSense.
+- **Type-Safe Argument Contracts** — Annotate events with `[EventArgs(typeof(T))]` to enforce argument types at both compile time and runtime. Mismatched handler signatures throw on subscribe; mismatched invocations are caught and logged immediately.
+- **Priority-Ordered Handlers** — Every handler carries an integer priority. Lower values execute first, providing deterministic, predictable execution order across the entire handler chain.
+- **Zero-Allocation Invocation** — Handler lists use a copy-on-write strategy: snapshots are rebuilt into flat arrays only when subscriptions change. The invocation hot path is a tight array loop with no allocations and no locks.
+- **Cancellable Events** — Implement `ICancellable` on your args type and any handler can halt propagation. Well-suited for validation pipelines, permission checks, and interceptor patterns.
+- **Sync & Async in One Pipeline** — Mix `Action<T>` and `Func<T, Task>` handlers in the same priority chain. Use `InvokeAsync` to properly `await` async handlers without fire-and-forget pitfalls.
+- **Batched Mutations** — Wrap bulk subscribe/unsubscribe operations in `BeginBatch()` / `EndBatch()` to defer snapshot rebuilds. The snapshot is rebuilt once when the batch completes, not once per operation.
+- **Global Broadcast** — Mark a domain as `Global` to broadcast events across all active instances with a single `GlobalInvoke` call — ideal for cross-system communication without tight coupling.
+- **IDisposable Subscriptions** — Every `Subscribe` call returns a disposable handle. Use `using` blocks or explicit `Dispose()` for leak-free, deterministic cleanup.
+- **Rich DEBUG Diagnostics** — In debug builds, handler registration captures `[CallerFilePath]` and `[CallerLineNumber]`. Slow handlers, type mismatches, and sync-over-async calls are logged with full source location context.
+- **AOT & Trimming Ready** — Marked `IsAotCompatible` from the start. No reflection, no `Activator.CreateInstance` — compatible with Native AOT and trimmed deployments out of the box.
 
 ---
 
-## 🚀 Quick Start — Up and Running in 60 Seconds
+## Quick Start
 
 ### 1. Define an Event Domain
 
-This is all you write:
+A complete event domain requires only a class attribute and field declarations:
 
 ```csharp
 using Vortex;
@@ -67,7 +67,7 @@ public static partial class GameEvents
 }
 ```
 
-That's it. **The source generator takes care of everything else.** At compile time, Vortex produces:
+From this declaration, the source generator produces the following at compile time:
 - `GameEvents.EventTypes` enum with `OnGameStarted` and `OnScoreChanged` values
 - `GameEvents.Manager` — the backing `EventManager<EventTypes>`
 - `GameEvents.OnGameStarted` / `GameEvents.OnScoreChanged` accessor properties supporting `+=` / `-=`
@@ -75,11 +75,11 @@ That's it. **The source generator takes care of everything else.** At compile ti
 - `GlobalInvokeOnGameStarted()`, `GlobalInvokeOnScoreChanged(args)` for cross-manager broadcast
 - `SubscribeOnGameStarted(handler, priority)` and `SubscribeOnScoreChanged(handler, priority)` returning `IDisposable` containers
 
-> 💡 **You declare the intent. Vortex generates the infrastructure.** Full IntelliSense, full type safety, zero hand-written plumbing.
+All generated members have full IntelliSense and XML documentation. You declare the events; Vortex generates the infrastructure.
 
 ### 2. Subscribe to Events
 
-Subscribing feels native — just use `+=` like you would with any C# event:
+The generated API supports familiar `+=` syntax as well as priority-controlled subscriptions with disposable handles:
 
 ```csharp
 // Simple += syntax (priority 0, no dispose handle)
@@ -95,7 +95,7 @@ using var sub = GameEvents.SubscribeOnScoreChanged(
 
 ### 3. Invoke Events
 
-Firing events is a one-liner — typed, safe, and allocation-free:
+Invocation methods are strongly typed and allocation-free:
 
 ```csharp
 // Typed invocation
@@ -104,13 +104,13 @@ GameEvents.InvokeOnScoreChanged(new GameEvents.ScoreChangedArgs(0, 100));
 // Parameterless invocation
 GameEvents.InvokeOnGameStarted();
 
-// Broadcast to ALL global managers — one call, every listener, everywhere
+// Broadcast across all global managers
 GameEvents.GlobalInvokeOnScoreChanged(new GameEvents.ScoreChangedArgs(100, 200));
 ```
 
 ### 4. Async Handlers
 
-Async is a first-class citizen — no workarounds, no fire-and-forget footguns:
+Async handlers are first-class — subscribe them the same way and use `InvokeAsync` to properly await the chain:
 
 ```csharp
 // Subscribe an async handler
@@ -125,9 +125,9 @@ await GameEvents.InvokeOnScoreChangedAsync(new GameEvents.ScoreChangedArgs(0, 10
 
 ---
 
-## 🎯 Instance Event Domains
+## Instance Event Domains
 
-Need per-object events — like component-level signals in a game engine? Just drop the `static` keyword:
+For per-object event pipelines — such as component-level signals in a game engine — omit the `static` modifier:
 
 ```csharp
 [EventDomain]
@@ -148,13 +148,13 @@ actor.InvokeOnDamaged(new ActorEvents.DamageArgs(25f, "Fire"));
 actor.Manager.Dispose();
 ```
 
-Static domains for global systems, instance domains for per-object signals — same API, same performance, same source generation.
+Static domains serve global systems; instance domains serve per-object signals. Both share the same API surface, the same performance characteristics, and the same source generation pipeline.
 
 ---
 
-## 🛑 Cancellable Events
+## Cancellable Events
 
-Build validation pipelines, permission gates, and interceptor patterns with zero effort. Just implement `ICancellable`:
+Implement `ICancellable` on your args type to enable handler-driven cancellation — useful for validation pipelines, permission gates, and interceptor chains:
 
 ```csharp
 public struct ValidateArgs : ICancellable
@@ -175,7 +175,7 @@ When `Cancelled` is set to `true`, all remaining handlers in the priority chain 
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 | Project | Target | Description |
 |---|---|---|
@@ -184,18 +184,20 @@ When `Cancelled` is set to `true`, all remaining handlers in the priority chain 
 
 ---
 
-## 🎓 Perfect For
+## Use Cases
 
-- **Game Engines & ECS** — Wire up entity events, input systems, and game state transitions with zero-allocation dispatch.
-- **Real-Time Simulations** — Priority-ordered, cancellable event chains give you precise control over simulation tick processing.
-- **Plugin Architectures** — Let plugins subscribe to well-typed events without coupling to the host application's internals.
-- **Modular Monoliths & Microservices** — Use global broadcast for cross-module communication without a service bus.
+Vortex is particularly well-suited for:
+
+- **Game Engines & ECS** — Entity events, input systems, and game state transitions with zero-allocation dispatch.
+- **Real-Time Simulations** — Priority-ordered, cancellable event chains for precise control over simulation tick processing.
+- **Plugin Architectures** — Strongly typed event contracts that plugins can subscribe to without coupling to host internals.
+- **Modular Monoliths** — Global broadcast for cross-module communication without a service bus or mediator.
 - **UI Frameworks** — Reactive property changes, command routing, and view-model notifications with deterministic ordering.
-- **Any latency-sensitive .NET application** where events are on the hot path.
+- **Any latency-sensitive .NET application** where event dispatch is on the hot path and allocations matter.
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 | Document | Description |
 |---|---|
@@ -220,5 +222,5 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ---
 
 <p align="center">
-  <b>Vortex</b> — Declare your events. Let the compiler do the rest. ⚡
+  <b>Vortex</b> — Declare your events. The compiler handles the rest.
 </p>
