@@ -50,32 +50,30 @@ public abstract class EventDelegateContainer<T> : IDisposable where T : struct, 
     /// </summary>
     public abstract bool MatchesDelegate(Delegate handler);
 
-#if DEBUG
-    /// <summary>
-    /// Source file where this handler was registered. Captured automatically
-    /// via <see cref="CallerFilePathAttribute"/> in DEBUG builds.
-    /// </summary>
-    public string? SourceFile { get; private set; }
+/// <summary>
+/// Source file where this handler was registered. Captured automatically
+/// via <see cref="CallerFilePathAttribute"/> in DEBUG builds.
+/// </summary>
+public string? SourceFile { get; private set; }
 
-    /// <summary>
-    /// Source line number where this handler was registered.
-    /// </summary>
-    public int SourceLine { get; private set; }
+/// <summary>
+/// Source line number where this handler was registered.
+/// </summary>
+public int SourceLine { get; private set; }
 
-    /// <summary>
-    /// Name of the member that registered this handler.
-    /// </summary>
-    public string? SourceMember { get; private set; }
+/// <summary>
+/// Name of the member that registered this handler.
+/// </summary>
+public string? SourceMember { get; private set; }
 
-    /// <summary>
-    /// Returns a compact "File:Line (Member)" string for diagnostics,
-    /// or <c>"unknown"</c> when source info was not captured.
-    /// </summary>
-    public string SourceDescription =>
-        SourceFile is not null
-            ? $"{System.IO.Path.GetFileName(SourceFile)}:{SourceLine} ({SourceMember})"
-            : "unknown";
-#endif
+/// <summary>
+/// Returns a compact "File:Line (Member)" string for diagnostics,
+/// or <c>"unknown"</c> when source info was not captured.
+/// </summary>
+public string SourceDescription =>
+    SourceFile is not null
+        ? $"{System.IO.Path.GetFileName(SourceFile)}:{SourceLine} ({SourceMember})"
+        : "unknown";
 
     public void Link(Event<T> @event)
     {
@@ -93,15 +91,15 @@ public abstract class EventDelegateContainer<T> : IDisposable where T : struct, 
         this.eventType = eventType;
     }
 
-#if DEBUG
     protected EventDelegateContainer(T eventType, int priority, string? sourceFile, int sourceLine, string? sourceMember)
         : this(eventType, priority)
     {
+#if DEBUG
         SourceFile = sourceFile;
         SourceLine = sourceLine;
         SourceMember = sourceMember;
-    }
 #endif
+    }
 
     public void Enable()
     {
@@ -143,14 +141,12 @@ public class EventDelegateContainer<T, TArgs> : EventDelegateContainer<T>, IInvo
         this.eventDelegate = eventDelegate;
     }
 
-#if DEBUG
-    public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, int priority,
-        string? sourceFile, int sourceLine, string? sourceMember)
-        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
-    {
-        this.eventDelegate = eventDelegate;
-    }
-#endif
+public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, int priority,
+    string? sourceFile, int sourceLine, string? sourceMember)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+{
+    this.eventDelegate = eventDelegate;
+}
 
     /// <summary>
     /// Protected constructor for subclasses that provide their own invocation
@@ -161,15 +157,13 @@ public class EventDelegateContainer<T, TArgs> : EventDelegateContainer<T>, IInvo
     {
     }
 
-#if DEBUG
-    protected EventDelegateContainer(T eventType, int priority,
-        string? sourceFile, int sourceLine, string? sourceMember)
-        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
-    {
-    }
-#endif
+protected EventDelegateContainer(T eventType, int priority,
+    string? sourceFile, int sourceLine, string? sourceMember)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+{
+}
 
-    public virtual void Invoke(TArgs args)
+public virtual void Invoke(TArgs args)
     {
         if (!Enabled) return;
         eventDelegate?.Invoke(args);
@@ -194,14 +188,12 @@ public sealed class ParameterlessEventDelegateContainer<T> : EventDelegateContai
         _action = action;
     }
 
-#if DEBUG
-    public ParameterlessEventDelegateContainer(T eventType, Action action, int priority,
-        string? sourceFile, int sourceLine, string? sourceMember)
-        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
-    {
-        _action = action;
-    }
-#endif
+public ParameterlessEventDelegateContainer(T eventType, Action action, int priority,
+    string? sourceFile, int sourceLine, string? sourceMember)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+{
+    _action = action;
+}
 
     public override void Invoke(Unit args)
     {

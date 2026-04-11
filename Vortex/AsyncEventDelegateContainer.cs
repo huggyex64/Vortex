@@ -31,14 +31,12 @@ public class AsyncEventDelegateContainer<T, TArgs> : EventDelegateContainer<T, T
         _asyncDelegate = asyncDelegate;
     }
 
-#if DEBUG
-    public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate, int priority,
-        string? sourceFile, int sourceLine, string? sourceMember)
-        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
-    {
-        _asyncDelegate = asyncDelegate;
-    }
-#endif
+public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate, int priority,
+    string? sourceFile, int sourceLine, string? sourceMember)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+{
+    _asyncDelegate = asyncDelegate;
+}
 
     /// <summary>
     /// Protected constructor for subclasses that provide their own invocation
@@ -49,13 +47,11 @@ public class AsyncEventDelegateContainer<T, TArgs> : EventDelegateContainer<T, T
     {
     }
 
-#if DEBUG
-    protected AsyncEventDelegateContainer(T eventType, int priority,
-        string? sourceFile, int sourceLine, string? sourceMember)
-        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
-    {
-    }
-#endif
+protected AsyncEventDelegateContainer(T eventType, int priority,
+    string? sourceFile, int sourceLine, string? sourceMember)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+{
+}
 
     /// <summary>
     /// Synchronous invocation fallback. Fires the async handler without awaiting.
@@ -102,14 +98,12 @@ public sealed class ParameterlessAsyncEventDelegateContainer<T> : AsyncEventDele
         _asyncAction = asyncAction;
     }
 
-#if DEBUG
-    public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAction, int priority,
-        string? sourceFile, int sourceLine, string? sourceMember)
-        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
-    {
-        _asyncAction = asyncAction;
-    }
-#endif
+public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAction, int priority,
+    string? sourceFile, int sourceLine, string? sourceMember)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+{
+    _asyncAction = asyncAction;
+}
 
     public override void Invoke(Unit args)
     {

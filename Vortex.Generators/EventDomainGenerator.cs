@@ -398,35 +398,23 @@ public class EventDomainGenerator : IIncrementalGenerator
 
         // Subscribe (parameterless)
         sb.AppendLine($"{ci}/// <summary>Subscribes a parameterless handler to <see cref=\"EventTypes.{name}\"/>. Dispose the returned container to unsubscribe.</summary>");
-        sb.AppendLine($"#if DEBUG");
         sb.AppendLine($"{ci}public{memberStatic} {containerType} Subscribe{name}(");
         sb.AppendLine($"{ci}    global::System.Action handler, int priority = 0,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
         sb.AppendLine($"{ci}    => {managerField}.AddNewDelegate(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
-        sb.AppendLine($"#else");
-        sb.AppendLine($"{ci}public{memberStatic} {containerType} Subscribe{name}(");
-        sb.AppendLine($"{ci}    global::System.Action handler, int priority = 0)");
-        sb.AppendLine($"{ci}    => {managerField}.AddNewDelegate(EventTypes.{name}, handler, priority);");
-        sb.AppendLine($"#endif");
         sb.AppendLine();
 
         // SubscribeAsync (parameterless)
         string asyncContainerType = $"global::Vortex.AsyncEventDelegateContainer<EventTypes, {UnitFqn}>";
         sb.AppendLine($"{ci}/// <summary>Subscribes a parameterless async handler to <see cref=\"EventTypes.{name}\"/>. Dispose the returned container to unsubscribe.</summary>");
-        sb.AppendLine($"#if DEBUG");
         sb.AppendLine($"{ci}public{memberStatic} {asyncContainerType} Subscribe{name}Async(");
         sb.AppendLine($"{ci}    global::System.Func<global::System.Threading.Tasks.Task> handler, int priority = 0,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
         sb.AppendLine($"{ci}    => {managerField}.AddNewAsyncDelegate(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
-        sb.AppendLine($"#else");
-        sb.AppendLine($"{ci}public{memberStatic} {asyncContainerType} Subscribe{name}Async(");
-        sb.AppendLine($"{ci}    global::System.Func<global::System.Threading.Tasks.Task> handler, int priority = 0)");
-        sb.AppendLine($"{ci}    => {managerField}.AddNewAsyncDelegate(EventTypes.{name}, handler, priority);");
-        sb.AppendLine($"#endif");
         sb.AppendLine();
     }
 
@@ -460,35 +448,23 @@ public class EventDomainGenerator : IIncrementalGenerator
 
         // Subscribe (typed)
         sb.AppendLine($"{ci}/// <summary>Subscribes a typed handler to <see cref=\"EventTypes.{name}\"/>. Dispose the returned container to unsubscribe.</summary>");
-        sb.AppendLine($"#if DEBUG");
         sb.AppendLine($"{ci}public{memberStatic} {containerType} Subscribe{name}(");
         sb.AppendLine($"{ci}    global::System.Action<{argsType}> handler, int priority = 0,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
         sb.AppendLine($"{ci}    => {managerField}.AddNewDelegate<{argsType}>(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
-        sb.AppendLine($"#else");
-        sb.AppendLine($"{ci}public{memberStatic} {containerType} Subscribe{name}(");
-        sb.AppendLine($"{ci}    global::System.Action<{argsType}> handler, int priority = 0)");
-        sb.AppendLine($"{ci}    => {managerField}.AddNewDelegate<{argsType}>(EventTypes.{name}, handler, priority);");
-        sb.AppendLine($"#endif");
         sb.AppendLine();
 
         // SubscribeAsync (typed)
         string asyncContainerType = $"global::Vortex.AsyncEventDelegateContainer<EventTypes, {argsType}>";
         sb.AppendLine($"{ci}/// <summary>Subscribes a typed async handler to <see cref=\"EventTypes.{name}\"/>. Dispose the returned container to unsubscribe.</summary>");
-        sb.AppendLine($"#if DEBUG");
         sb.AppendLine($"{ci}public{memberStatic} {asyncContainerType} Subscribe{name}Async(");
         sb.AppendLine($"{ci}    global::System.Func<{argsType}, global::System.Threading.Tasks.Task> handler, int priority = 0,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
         sb.AppendLine($"{ci}    => {managerField}.AddNewAsyncDelegate<{argsType}>(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
-        sb.AppendLine($"#else");
-        sb.AppendLine($"{ci}public{memberStatic} {asyncContainerType} Subscribe{name}Async(");
-        sb.AppendLine($"{ci}    global::System.Func<{argsType}, global::System.Threading.Tasks.Task> handler, int priority = 0)");
-        sb.AppendLine($"{ci}    => {managerField}.AddNewAsyncDelegate<{argsType}>(EventTypes.{name}, handler, priority);");
-        sb.AppendLine($"#endif");
         sb.AppendLine();
     }
 

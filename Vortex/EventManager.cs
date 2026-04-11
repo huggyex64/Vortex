@@ -246,12 +246,10 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// Register a typed delegate for an event.
     /// </summary>
     public EventDelegateContainer<T, TArgs> AddNewDelegate<TArgs>(
-        T eventType, Action<TArgs> eventDelegate, int priority = 0
-#if DEBUG
-        , [CallerFilePath] string? sourceFile = null,
+        T eventType, Action<TArgs> eventDelegate, int priority = 0,
+        [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
         [CallerMemberName] string? sourceMember = null
-#endif
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -264,11 +262,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
                 $"declares '{EventArgsContract<T>.GetDeclaredName(eventType)}' " +
                 $"via [EventArgs]. Fix the subscriber's type parameter.");
         }
-#if DEBUG
         EventDelegateContainer<T, TArgs> container = new(eventType, eventDelegate, priority, sourceFile, sourceLine, sourceMember);
-#else
-        EventDelegateContainer<T, TArgs> container = new(eventType, eventDelegate, priority);
-#endif
         GetOrCreateEvent(eventType).Add(container);
         return container;
     }
@@ -277,12 +271,10 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// Register a parameterless delegate for an event.
     /// </summary>
     public EventDelegateContainer<T, Unit> AddNewDelegate(
-        T eventType, Action eventDelegate, int priority = 0
-#if DEBUG
-        , [CallerFilePath] string? sourceFile = null,
+        T eventType, Action eventDelegate, int priority = 0,
+        [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
         [CallerMemberName] string? sourceMember = null
-#endif
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -296,11 +288,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
                 $"via [EventArgs]. Fix the subscriber's type parameter.");
         }
 
-#if DEBUG
         ParameterlessEventDelegateContainer<T> container = new(eventType, eventDelegate, priority, sourceFile, sourceLine, sourceMember);
-#else
-        ParameterlessEventDelegateContainer<T> container = new(eventType, eventDelegate, priority);
-#endif
         GetOrCreateEvent(eventType).Add(container);
         return container;
     }
@@ -310,12 +298,10 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// Register a typed async delegate for an event.
     /// </summary>
     public AsyncEventDelegateContainer<T, TArgs> AddNewAsyncDelegate<TArgs>(
-        T eventType, Func<TArgs, Task> eventDelegate, int priority = 0
-#if DEBUG
-        , [CallerFilePath] string? sourceFile = null,
+        T eventType, Func<TArgs, Task> eventDelegate, int priority = 0,
+        [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
         [CallerMemberName] string? sourceMember = null
-#endif
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -328,11 +314,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
                 $"declares '{EventArgsContract<T>.GetDeclaredName(eventType)}' " +
                 $"via [EventArgs]. Fix the subscriber's type parameter.");
         }
-#if DEBUG
         AsyncEventDelegateContainer<T, TArgs> container = new(eventType, eventDelegate, priority, sourceFile, sourceLine, sourceMember);
-#else
-        AsyncEventDelegateContainer<T, TArgs> container = new(eventType, eventDelegate, priority);
-#endif
         GetOrCreateEvent(eventType).Add(container);
         return container;
     }
@@ -341,12 +323,10 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// Register a parameterless async delegate for an event.
     /// </summary>
     public AsyncEventDelegateContainer<T, Unit> AddNewAsyncDelegate(
-        T eventType, Func<Task> eventDelegate, int priority = 0
-#if DEBUG
-        , [CallerFilePath] string? sourceFile = null,
+        T eventType, Func<Task> eventDelegate, int priority = 0,
+        [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
         [CallerMemberName] string? sourceMember = null
-#endif
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -360,11 +340,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
                 $"via [EventArgs]. Fix the subscriber's type parameter.");
         }
 
-#if DEBUG
         ParameterlessAsyncEventDelegateContainer<T> container = new(eventType, eventDelegate, priority, sourceFile, sourceLine, sourceMember);
-#else
-        ParameterlessAsyncEventDelegateContainer<T> container = new(eventType, eventDelegate, priority);
-#endif
         GetOrCreateEvent(eventType).Add(container);
         return container;
     }
