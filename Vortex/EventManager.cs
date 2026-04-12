@@ -109,9 +109,9 @@ public class EventManager<T> : IDisposable where T : struct, Enum
         });
     }
 
-    public void AddDelegate(EventDelegateContainer<T> eventDelegate)
+    public bool AddDelegate(EventDelegateContainer<T> eventDelegate, bool allowMultiple = false)
     {
-        GetOrCreateEvent(eventDelegate.EventType).Add(eventDelegate);
+        return GetOrCreateEvent(eventDelegate.EventType).Add(eventDelegate, allowMultiple);
     }
 
     public void RemoveDelegate(EventDelegateContainer<T> eventDelegate)
@@ -320,6 +320,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
         int sourceLine = 0,
         string? sourceMember = null
 #endif
+        , bool allowMultiple = false
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -333,7 +334,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
                 $"via [EventArgs]. Fix the subscriber's type parameter.");
         }
         AsyncEventDelegateContainer<T, TArgs> container = new(eventType, eventDelegate, priority, sourceFile, sourceLine, sourceMember);
-        GetOrCreateEvent(eventType).Add(container);
+        GetOrCreateEvent(eventType).Add(container, allowMultiple);
         return container;
     }
 
@@ -351,6 +352,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
         int sourceLine = 0,
         string? sourceMember = null
 #endif
+        , bool allowMultiple = false
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -365,7 +367,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
         }
 
         ParameterlessAsyncEventDelegateContainer<T> container = new(eventType, eventDelegate, priority, sourceFile, sourceLine, sourceMember);
-        GetOrCreateEvent(eventType).Add(container);
+        GetOrCreateEvent(eventType).Add(container, allowMultiple);
         return container;
     }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -295,24 +296,32 @@ public class Event<T> where T : struct, Enum
     }
 #endif
 
-    public void Add(EventDelegateContainer<T> eventDelegate)
+    public bool Add(EventDelegateContainer<T> eventDelegate, bool allowMultiple = false)
     {
+        bool added = false;
         lock (_lock)
         {
-            if (!_eventDelegates.ContainsKey(eventDelegate.Priority))
+            if (!_eventDelegates.TryGetValue(eventDelegate.Priority, out List<EventDelegateContainer<T>>? value))
             {
-                _eventDelegates[eventDelegate.Priority] = new List<EventDelegateContainer<T>>();
+                value = [];
+                _eventDelegates[eventDelegate.Priority] = value;
                 SortKeys();
             }
-            if (!_eventDelegates[eventDelegate.Priority].Contains(eventDelegate))
+            if (allowMultiple || !value.Any(e => e.Event == eventDelegate.Event))
             {
-                _eventDelegates[eventDelegate.Priority].Add(eventDelegate);
+                value.Add(eventDelegate);
                 eventDelegate.Link(this);
+                added = true;
             }
-            if (_batchDepth > 0)
-                _batchDirty = true;
-            else
-                RebuildSnapshot();
+            if (added)
+            {
+                if (_batchDepth > 0)
+                    _batchDirty = true;
+                else
+                    RebuildSnapshot();
+            }
+            eventDelegate.Added = added;
+            return added;
         }
     }
 

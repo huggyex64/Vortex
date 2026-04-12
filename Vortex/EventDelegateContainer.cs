@@ -9,7 +9,7 @@ namespace Vortex;
 /// <see cref="EventDelegateContainer{T, TArgs}"/> derived class.
 /// Implements <see cref="IDisposable"/> for self-unsubscription.
 /// </summary>
-public abstract class EventDelegateContainer<T> : IDisposable where T : struct, Enum
+public abstract class EventDelegateContainer<T> : IEventDelegateContainer where T : struct, Enum
 {
     public EventManager<T>? EventManager => Event?.EventManager;
 
@@ -21,6 +21,13 @@ public abstract class EventDelegateContainer<T> : IDisposable where T : struct, 
         {
             _event = value;
         }
+    }
+
+    private bool _added;
+    public bool Added
+    {
+        get { return _added; }
+        internal set { _added = value; }
     }
 
     private bool _disposed;
