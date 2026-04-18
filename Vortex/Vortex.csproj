@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-	<Version>1.0.8</Version>
+    <TargetFramework>net10.0</TargetFramework>
+	<Version>1.0.16</Version>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
@@ -13,10 +13,7 @@
 
   <!-- Source generator for [EventDomain] classes -->
   <ItemGroup>
-    <ProjectReference Include="..\Vortex.Generators\Vortex.Generators.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false"
-                      PrivateAssets="all" />
+    <ProjectReference Include="..\Vortex.Generators\Vortex.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- Pack the source generator into the NuGet package so consumers get it automatically -->
@@ -26,8 +23,7 @@
 
   <Target Name="_AddGeneratorToPackage" DependsOnTargets="ResolveReferences">
     <ItemGroup>
-      <TfmSpecificPackageFile Include="@(Analyzer)" PackagePath="analyzers/dotnet/cs"
-                              Condition="'%(Filename)' == 'Vortex.Generators'" />
+      <TfmSpecificPackageFile Include="@(Analyzer)" PackagePath="analyzers/dotnet/cs" Condition="'%(Filename)' == 'Vortex.Generators'" />
     </ItemGroup>
   </Target>
 

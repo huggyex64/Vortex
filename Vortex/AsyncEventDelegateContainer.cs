@@ -25,13 +25,13 @@ public class AsyncEventDelegateContainer<T, TArgs> : EventDelegateContainer<T, T
 
     private readonly Func<TArgs, Task>? _asyncDelegate;
 
-    public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate, int priority = 0)
+    public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate, EventPriority priority = default)
         : base(eventType, priority)
     {
         _asyncDelegate = asyncDelegate;
     }
 
-public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate, int priority,
+public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate, EventPriority priority,
     string? sourceFile, int sourceLine, string? sourceMember)
     : base(eventType, priority, sourceFile, sourceLine, sourceMember)
 {
@@ -42,12 +42,12 @@ public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate,
     /// Protected constructor for subclasses that provide their own invocation
     /// logic and do not use the <see cref="_asyncDelegate"/> field.
     /// </summary>
-    protected AsyncEventDelegateContainer(T eventType, int priority)
+    protected AsyncEventDelegateContainer(T eventType, EventPriority priority)
         : base(eventType, priority)
     {
     }
 
-protected AsyncEventDelegateContainer(T eventType, int priority,
+protected AsyncEventDelegateContainer(T eventType, EventPriority priority,
     string? sourceFile, int sourceLine, string? sourceMember)
     : base(eventType, priority, sourceFile, sourceLine, sourceMember)
 {
@@ -92,13 +92,13 @@ public sealed class ParameterlessAsyncEventDelegateContainer<T> : AsyncEventDele
 
     private readonly Func<Task> _asyncAction;
 
-    public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAction, int priority = 0)
+    public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAction, EventPriority priority = default)
         : base(eventType, priority)
     {
         _asyncAction = asyncAction;
     }
 
-public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAction, int priority,
+public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAction, EventPriority priority,
     string? sourceFile, int sourceLine, string? sourceMember)
     : base(eventType, priority, sourceFile, sourceLine, sourceMember)
 {

@@ -36,7 +36,7 @@ public readonly struct EventAccessor<TEnum> where TEnum : struct, Enum
 
     public static EventAccessor<TEnum> operator +(EventAccessor<TEnum> accessor, Action handler)
     {
-        accessor._manager.AddNewDelegate(accessor._eventType, handler, 0);
+        accessor._manager.AddNewDelegate(accessor._eventType, handler, default(EventPriority));
         return accessor;
     }
 
@@ -48,7 +48,7 @@ public readonly struct EventAccessor<TEnum> where TEnum : struct, Enum
 
     public static EventAccessor<TEnum> operator +(EventAccessor<TEnum> accessor, Func<Task> handler)
     {
-        accessor._manager.AddNewAsyncDelegate(accessor._eventType, handler, 0);
+        accessor._manager.AddNewAsyncDelegate(accessor._eventType, handler, default(EventPriority));
         return accessor;
     }
 
@@ -83,7 +83,7 @@ public readonly struct EventAccessor<TEnum, TArgs> where TEnum : struct, Enum
 
     public static EventAccessor<TEnum, TArgs> operator +(EventAccessor<TEnum, TArgs> accessor, Action<TArgs> handler)
     {
-        accessor._manager.AddNewDelegate<TArgs>(accessor._eventType, handler, 0);
+        accessor._manager.AddNewDelegate<TArgs>(accessor._eventType, handler, default(EventPriority));
         return accessor;
     }
 
@@ -95,7 +95,7 @@ public readonly struct EventAccessor<TEnum, TArgs> where TEnum : struct, Enum
 
     public static EventAccessor<TEnum, TArgs> operator +(EventAccessor<TEnum, TArgs> accessor, Func<TArgs, Task> handler)
     {
-        accessor._manager.AddNewAsyncDelegate<TArgs>(accessor._eventType, handler, 0);
+        accessor._manager.AddNewAsyncDelegate<TArgs>(accessor._eventType, handler, default(EventPriority));
         return accessor;
     }
 

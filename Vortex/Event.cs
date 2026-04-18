@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -35,9 +36,9 @@ public class Event<T> where T : struct, Enum
     private readonly EventManager<T> _eventManager;
     public EventManager<T> EventManager => _eventManager;
 
-    private readonly ConcurrentDictionary<int, List<EventDelegateContainer<T>>> _eventDelegates = new();
+    private readonly Dictionary<EventPriority, List<EventDelegateContainer<T>>> _eventDelegates = new();
 
-    private readonly List<int> _sortedKeys = [];
+    private readonly List<EventPriority> _sortedKeys = [];
 
     private readonly object _lock = new();
 
@@ -47,6 +48,12 @@ public class Event<T> where T : struct, Enum
     /// Used by DEBUG diagnostics to detect type-mismatch handlers.
     /// </summary>
     private EventDelegateContainer<T>[] _cachedSnapshot = [];
+
+    /// <summary>
+    /// Actual valid length of <see cref="_cachedSnapshot"/> when rented from ArrayPool.
+    /// The rented array may be larger than needed; use this length for iteration.
+    /// </summary>
+    private int _cachedSnapshotLength = 0;
 
     /// <summary>
     /// Per-<c>TArgs</c> typed COW snapshots keyed by <see cref="Type"/>.
@@ -60,12 +67,10 @@ public class Event<T> where T : struct, Enum
     private readonly ConcurrentDictionary<Type, object> _typedSnapshots = new();
 
     /// <summary>
-    /// Per-<c>TArgs</c> cached factory delegates that build strongly typed
-    /// <c>EventDelegateContainer&lt;T, TArgs&gt;[]</c> from a list of base containers.
-    /// Avoids repeated <see cref="Array.CreateInstance(Type, int)"/> and per-element
-    /// <see cref="Array.SetValue(object, int)"/> overhead.
+    /// Per-<c>TArgs</c> actual lengths of typed snapshots. Since typed arrays
+    /// are rented from ArrayPool, they may be larger than needed.
     /// </summary>
-    private static readonly ConcurrentDictionary<Type, Func<List<EventDelegateContainer<T>>, object>> s_arrayBuilders = new();
+    private readonly ConcurrentDictionary<Type, int> _typedSnapshotLengths = new();
 
     private volatile bool _enabled = true;
     public bool Enabled
@@ -131,24 +136,34 @@ public class Event<T> where T : struct, Enum
         if (!Enabled) return;
 
         EventDelegateContainer<T, TArgs>[] typedSnapshot;
+        int typedLength;
 #if DEBUG
         EventDelegateContainer<T>[] fullSnapshot;
+        int fullLength;
 #endif
         lock (_lock)
         {
-            typedSnapshot = _typedSnapshots.TryGetValue(typeof(TArgs), out object? obj)
-                ? (EventDelegateContainer<T, TArgs>[])obj
-                : [];
+            if (_typedSnapshots.TryGetValue(typeof(TArgs), out object? obj))
+            {
+                typedSnapshot = (EventDelegateContainer<T, TArgs>[])obj;
+                typedLength = _typedSnapshotLengths[typeof(TArgs)];
+            }
+            else
+            {
+                typedSnapshot = [];
+                typedLength = 0;
+            }
 #if DEBUG
             fullSnapshot = _cachedSnapshot;
+            fullLength = _cachedSnapshotLength;
 #endif
         }
 
 #if DEBUG
         // Warn about handlers on this event registered with a different TArgs.
-        if (fullSnapshot.Length > typedSnapshot.Length)
+        if (fullLength > typedLength)
         {
-            for (int j = 0; j < fullSnapshot.Length; j++)
+            for (int j = 0; j < fullLength; j++)
             {
                 if (fullSnapshot[j] is not EventDelegateContainer<T, TArgs>)
                     WarnTypeMismatch<TArgs>(fullSnapshot[j]);
@@ -158,13 +173,13 @@ public class Event<T> where T : struct, Enum
         double threshold = SlowHandlerThresholdMs;
         Stopwatch? sw = threshold > 0 ? Stopwatch.StartNew() : null;
 #endif
-
-        for (int j = 0; j < typedSnapshot.Length; j++)
+        var span = typedSnapshot.AsSpan(0, typedLength);
+        for (int j = 0; j < span.Length; j++)
         {
 #if DEBUG
             sw?.Restart();
 #endif
-            typedSnapshot[j].Invoke(args);
+            span[j].Invoke(args);
 
 #if DEBUG
             if (sw is not null)
@@ -201,24 +216,34 @@ public class Event<T> where T : struct, Enum
         if (!Enabled) return;
 
         EventDelegateContainer<T, TArgs>[] typedSnapshot;
+        int typedLength;
 #if DEBUG
         EventDelegateContainer<T>[] fullSnapshot;
+        int fullLength;
 #endif
         lock (_lock)
         {
-            typedSnapshot = _typedSnapshots.TryGetValue(typeof(TArgs), out object? obj)
-                ? (EventDelegateContainer<T, TArgs>[])obj
-                : [];
+            if (_typedSnapshots.TryGetValue(typeof(TArgs), out object? obj))
+            {
+                typedSnapshot = (EventDelegateContainer<T, TArgs>[])obj;
+                typedLength = _typedSnapshotLengths[typeof(TArgs)];
+            }
+            else
+            {
+                typedSnapshot = [];
+                typedLength = 0;
+            }
 #if DEBUG
             fullSnapshot = _cachedSnapshot;
+            fullLength = _cachedSnapshotLength;
 #endif
         }
 
 #if DEBUG
         // Warn about handlers on this event registered with a different TArgs.
-        if (fullSnapshot.Length > typedSnapshot.Length)
+        if (fullLength > typedLength)
         {
-            for (int j = 0; j < fullSnapshot.Length; j++)
+            for (int j = 0; j < fullLength; j++)
             {
                 if (fullSnapshot[j] is not EventDelegateContainer<T, TArgs>)
                     WarnTypeMismatch<TArgs>(fullSnapshot[j]);
@@ -229,7 +254,7 @@ public class Event<T> where T : struct, Enum
         Stopwatch? sw = threshold > 0 ? Stopwatch.StartNew() : null;
 #endif
 
-        for (int j = 0; j < typedSnapshot.Length; j++)
+        for (int j = 0; j < typedLength; j++)
         {
 #if DEBUG
             sw?.Restart();
@@ -270,7 +295,11 @@ public class Event<T> where T : struct, Enum
         lock (_lock)
         {
             if (_typedSnapshots.TryGetValue(typeof(TArgs), out object? obj))
-                return (EventDelegateContainer<T, TArgs>[])obj;
+            {
+                var array = (EventDelegateContainer<T, TArgs>[])obj;
+                int length = _typedSnapshotLengths[typeof(TArgs)];
+                return array.AsSpan(0, length);
+            }
             return ReadOnlySpan<EventDelegateContainer<T, TArgs>>.Empty;
         }
     }
@@ -381,7 +410,7 @@ public class Event<T> where T : struct, Enum
     {
         _sortedKeys.Clear();
         _sortedKeys.AddRange(_eventDelegates.Keys);
-        _sortedKeys.Sort();
+        EventPriority.Sort(_sortedKeys);
     }
 
     /// <summary>
@@ -397,12 +426,23 @@ public class Event<T> where T : struct, Enum
 
         if (totalCount == 0)
         {
+            // Return old snapshot to pool before clearing
+            if (_cachedSnapshot.Length > 0)
+                ArrayPool<EventDelegateContainer<T>>.Shared.Return(_cachedSnapshot, clearArray: true);
+
             _cachedSnapshot = [];
+            _cachedSnapshotLength = 0;
             _typedSnapshots.Clear();
+            _typedSnapshotLengths.Clear();
             return;
         }
 
-        EventDelegateContainer<T>[] snapshot = new EventDelegateContainer<T>[totalCount];
+        // Return old snapshot to pool before renting new one
+        if (_cachedSnapshot.Length > 0)
+            ArrayPool<EventDelegateContainer<T>>.Shared.Return(_cachedSnapshot, clearArray: true);
+
+        // Rent from ArrayPool instead of allocating
+        EventDelegateContainer<T>[] snapshot = ArrayPool<EventDelegateContainer<T>>.Shared.Rent(totalCount);
         int index = 0;
         for (int i = 0; i < _sortedKeys.Count; i++)
         {
@@ -411,6 +451,7 @@ public class Event<T> where T : struct, Enum
                 snapshot[index++] = bucket[j];
         }
         _cachedSnapshot = snapshot;
+        _cachedSnapshotLength = totalCount;
 
         RebuildTypedSnapshots();
     }
@@ -425,7 +466,20 @@ public class Event<T> where T : struct, Enum
     /// </summary>
     private void RebuildTypedSnapshots()
     {
+        // Return all old typed snapshots to their respective pools
+        foreach (var kvp in _typedSnapshots)
+        {
+            Type argsType = kvp.Key;
+            if (!s_arrayReturnMethods.TryGetValue(argsType, out Action<object>? returnMethod))
+            {
+                returnMethod = CreateArrayReturnMethod(argsType);
+                s_arrayReturnMethods[argsType] = returnMethod;
+            }
+            returnMethod(kvp.Value);
+        }
+
         _typedSnapshots.Clear();
+        _typedSnapshotLengths.Clear();
 
         // First pass: collect containers per ArgsType, maintaining priority order.
         Dictionary<Type, List<EventDelegateContainer<T>>>? groups = null;
@@ -461,6 +515,7 @@ public class Event<T> where T : struct, Enum
                 s_arrayBuilders[entry.Key] = builder;
             }
             _typedSnapshots[entry.Key] = builder(entry.Value);
+            _typedSnapshotLengths[entry.Key] = entry.Value.Count;
         }
     }
 
@@ -471,10 +526,21 @@ public class Event<T> where T : struct, Enum
     /// </summary>
     private static object BuildTypedArray<TArgs>(List<EventDelegateContainer<T>> list)
     {
-        EventDelegateContainer<T, TArgs>[] result = new EventDelegateContainer<T, TArgs>[list.Count];
+        // Rent from ArrayPool instead of allocating
+        EventDelegateContainer<T, TArgs>[] result = ArrayPool<EventDelegateContainer<T, TArgs>>.Shared.Rent(list.Count);
         for (int i = 0; i < list.Count; i++)
             result[i] = (EventDelegateContainer<T, TArgs>)list[i];
         return result;
+    }
+
+    /// <summary>
+    /// Generic helper invoked through a cached delegate. Returns a rented typed array
+    /// to its <c>ArrayPool&lt;EventDelegateContainer&lt;T, TArgs&gt;&gt;.Shared</c>.
+    /// </summary>
+    private static void ReturnTypedArray<TArgs>(object array)
+    {
+        ArrayPool<EventDelegateContainer<T, TArgs>>.Shared.Return(
+            (EventDelegateContainer<T, TArgs>[])array, clearArray: true);
     }
 
     /// <summary>
@@ -492,4 +558,34 @@ public class Event<T> where T : struct, Enum
         return (Func<List<EventDelegateContainer<T>>, object>)
             Delegate.CreateDelegate(typeof(Func<List<EventDelegateContainer<T>>, object>), closedMethod);
     }
+
+    /// <summary>
+    /// Creates and returns a delegate that calls <see cref="ReturnTypedArray{TArgs}"/>
+    /// closed over the given <paramref name="argsType"/>. Used to return rented arrays
+    /// to the appropriate ArrayPool instance.
+    /// </summary>
+    private static Action<object> CreateArrayReturnMethod(Type argsType)
+    {
+        MethodInfo openMethod = typeof(Event<T>)
+            .GetMethod(nameof(ReturnTypedArray), BindingFlags.NonPublic | BindingFlags.Static)!;
+#pragma warning disable IL3050 // MakeGenericMethod: the closed generic is only over reference-compatible types already loaded.
+        MethodInfo closedMethod = openMethod.MakeGenericMethod(argsType);
+#pragma warning restore IL3050
+        return (Action<object>)
+            Delegate.CreateDelegate(typeof(Action<object>), closedMethod);
+    }
+
+    /// <summary>
+    /// Per-<c>TArgs</c> cached factory delegates that build strongly typed
+    /// <c>EventDelegateContainer&lt;T, TArgs&gt;[]</c> from a list of base containers.
+    /// Avoids repeated <see cref="Array.CreateInstance(Type, int)"/> and per-element
+    /// <see cref="Array.SetValue(object, int)"/> overhead.
+    /// </summary>
+    private static readonly ConcurrentDictionary<Type, Func<List<EventDelegateContainer<T>>, object>> s_arrayBuilders = new();
+
+    /// <summary>
+    /// Per-<c>TArgs</c> cached methods that return rented arrays to the appropriate
+    /// <c>ArrayPool&lt;EventDelegateContainer&lt;T, TArgs&gt;&gt;.Shared</c>.
+    /// </summary>
+    private static readonly ConcurrentDictionary<Type, Action<object>> s_arrayReturnMethods = new();
 }

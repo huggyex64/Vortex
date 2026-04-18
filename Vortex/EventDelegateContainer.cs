@@ -42,8 +42,8 @@ public abstract class EventDelegateContainer<T> : IEventDelegateContainer where 
         private set => enabled = value;
     }
 
-    private readonly int priority;
-    public int Priority => priority;
+    private readonly EventPriority priority;
+    public EventPriority Priority => priority;
 
     /// <summary>
     /// The <c>TArgs</c> type this container was registered with.
@@ -92,13 +92,13 @@ public string SourceDescription =>
         Event = null;
     }
 
-    protected EventDelegateContainer(T eventType, int priority)
+    protected EventDelegateContainer(T eventType, EventPriority priority)
     {
         this.priority = priority;
         this.eventType = eventType;
     }
 
-    protected EventDelegateContainer(T eventType, int priority, string? sourceFile, int sourceLine, string? sourceMember)
+    protected EventDelegateContainer(T eventType, EventPriority priority, string? sourceFile, int sourceLine, string? sourceMember)
         : this(eventType, priority)
     {
 #if DEBUG
@@ -142,13 +142,13 @@ public class EventDelegateContainer<T, TArgs> : EventDelegateContainer<T>, IInvo
 
     private readonly Action<TArgs>? eventDelegate;
 
-    public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, int priority = 0)
+    public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, EventPriority priority = default)
         : base(eventType, priority)
     {
         this.eventDelegate = eventDelegate;
     }
 
-public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, int priority,
+public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, EventPriority priority,
     string? sourceFile, int sourceLine, string? sourceMember)
     : base(eventType, priority, sourceFile, sourceLine, sourceMember)
 {
@@ -159,12 +159,12 @@ public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, int prio
     /// Protected constructor for subclasses that provide their own invocation
     /// logic and do not use the <see cref="eventDelegate"/> field.
     /// </summary>
-    protected EventDelegateContainer(T eventType, int priority)
+    protected EventDelegateContainer(T eventType, EventPriority priority)
         : base(eventType, priority)
     {
     }
 
-protected EventDelegateContainer(T eventType, int priority,
+protected EventDelegateContainer(T eventType, EventPriority priority,
     string? sourceFile, int sourceLine, string? sourceMember)
     : base(eventType, priority, sourceFile, sourceLine, sourceMember)
 {
@@ -189,13 +189,13 @@ public sealed class ParameterlessEventDelegateContainer<T> : EventDelegateContai
 
     private readonly Action _action;
 
-    public ParameterlessEventDelegateContainer(T eventType, Action action, int priority = 0)
+    public ParameterlessEventDelegateContainer(T eventType, Action action, EventPriority priority = default)
         : base(eventType, priority)
     {
         _action = action;
     }
 
-public ParameterlessEventDelegateContainer(T eventType, Action action, int priority,
+public ParameterlessEventDelegateContainer(T eventType, Action action, EventPriority priority,
     string? sourceFile, int sourceLine, string? sourceMember)
     : base(eventType, priority, sourceFile, sourceLine, sourceMember)
 {
@@ -206,5 +206,54 @@ public ParameterlessEventDelegateContainer(T eventType, Action action, int prior
     {
         if (!Enabled) return;
         _action?.Invoke();
+    }
+}
+
+/// <summary>
+/// A typed delegate container that automatically disposes itself after a single invocation.
+/// </summary>
+public sealed class OneTimeEventDelegateContainer<T, TArgs> : EventDelegateContainer<T, TArgs> where T : struct, Enum
+{
+    private readonly Action<TArgs>? _eventDelegate;
+
+    public override Type ArgsType => typeof(TArgs);
+    public override bool MatchesDelegate(Delegate handler) => handler != null && handler.Equals(_eventDelegate);
+
+    public OneTimeEventDelegateContainer(T eventType, Action<TArgs> eventDelegate, EventPriority priority,
+        string? sourceFile, int sourceLine, string? sourceMember)
+        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+    {
+        _eventDelegate = eventDelegate;
+    }
+
+    public override void Invoke(TArgs args)
+    {
+        if (!Enabled) return;
+        _eventDelegate?.Invoke(args);
+        Dispose();
+    }
+}
+
+/// <summary>
+/// A parameterless delegate container that automatically disposes itself after a single invocation.
+/// </summary>
+public sealed class OneTimeParameterlessEventDelegateContainer<T> : EventDelegateContainer<T, Unit> where T : struct, Enum
+{
+    private readonly Action _action;
+
+    public override bool MatchesDelegate(Delegate handler) => handler != null && handler.Equals(_action);
+
+    public OneTimeParameterlessEventDelegateContainer(T eventType, Action action, EventPriority priority,
+        string? sourceFile, int sourceLine, string? sourceMember)
+        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+    {
+        _action = action;
+    }
+
+    public override void Invoke(Unit args)
+    {
+        if (!Enabled) return;
+        _action?.Invoke();
+        Dispose();
     }
 }

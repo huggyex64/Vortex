@@ -53,6 +53,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     }
 
     private readonly ConcurrentDictionary<T, Event<T>> _events = new ConcurrentDictionary<T, Event<T>>();
+    private int _batchDepth;
 
     private bool global = false;
     public bool Global
@@ -105,6 +106,9 @@ public class EventManager<T> : IDisposable where T : struct, Enum
             Event<T> evt = new Event<T>(this, key);
             if (!enabled)
                 evt.Enabled = false;
+            int depth = _batchDepth;
+            for (int i = 0; i < depth; i++)
+                evt.BeginBatch();
             return evt;
         });
     }
@@ -141,6 +145,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// </summary>
     public void BeginBatch()
     {
+        _batchDepth++;
         foreach (Event<T> evt in _events.Values)
             evt.BeginBatch();
     }
@@ -151,6 +156,8 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// </summary>
     public void EndBatch()
     {
+        if (_batchDepth > 0)
+            _batchDepth--;
         foreach (Event<T> evt in _events.Values)
             evt.EndBatch();
     }
@@ -246,7 +253,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// Register a typed delegate for an event.
     /// </summary>
     public EventDelegateContainer<T, TArgs> AddNewDelegate<TArgs>(
-        T eventType, Action<TArgs> eventDelegate, int priority = 0,
+        T eventType, Action<TArgs> eventDelegate, EventPriority priority = default,
 #if DEBUG
         [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
@@ -277,7 +284,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// Register a parameterless delegate for an event.
     /// </summary>
     public EventDelegateContainer<T, Unit> AddNewDelegate(
-        T eventType, Action eventDelegate, int priority = 0,
+        T eventType, Action eventDelegate, EventPriority priority = default,
 #if DEBUG
         [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
@@ -305,12 +312,75 @@ public class EventManager<T> : IDisposable where T : struct, Enum
         return container;
     }
 
+    /// <summary>
+    /// Register a typed delegate that is automatically disposed after a single invocation.
+    /// </summary>
+    public OneTimeEventDelegateContainer<T, TArgs> SubscribeOnce<TArgs>(
+        T eventType, Action<TArgs> eventDelegate, EventPriority priority = default,
+#if DEBUG
+        [CallerFilePath] string? sourceFile = null,
+        [CallerLineNumber] int sourceLine = 0,
+        [CallerMemberName] string? sourceMember = null
+#else
+        string? sourceFile = null,
+        int sourceLine = 0,
+        string? sourceMember = null
+#endif
+    )
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!EventArgsContract<T>.IsValid<TArgs>(eventType))
+        {
+            throw new InvalidOperationException(
+                $"[EventSystem] Type mismatch on {typeof(T).Name}.{eventType}: " +
+                $"handler registered with '{typeof(TArgs).Name}' but the event " +
+                $"declares '{EventArgsContract<T>.GetDeclaredName(eventType)}' " +
+                $"via [EventArgs]. Fix the subscriber's type parameter.");
+        }
+        OneTimeEventDelegateContainer<T, TArgs> container = new(eventType, eventDelegate, priority, sourceFile, sourceLine, sourceMember);
+        GetOrCreateEvent(eventType).Add(container);
+        return container;
+    }
+
+    /// <summary>
+    /// Register a parameterless delegate that is automatically disposed after a single invocation.
+    /// </summary>
+    public OneTimeParameterlessEventDelegateContainer<T> SubscribeOnce(
+        T eventType, Action eventDelegate, EventPriority priority = default,
+#if DEBUG
+        [CallerFilePath] string? sourceFile = null,
+        [CallerLineNumber] int sourceLine = 0,
+        [CallerMemberName] string? sourceMember = null
+#else
+        string? sourceFile = null,
+        int sourceLine = 0,
+        string? sourceMember = null
+#endif
+    )
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!EventArgsContract<T>.IsValid<Unit>(eventType))
+        {
+            throw new InvalidOperationException(
+                $"[EventSystem] Type mismatch on {typeof(T).Name}.{eventType}: " +
+                $"handler registered with 'Unit' (parameterless) but the event " +
+                $"declares '{EventArgsContract<T>.GetDeclaredName(eventType)}' " +
+                $"via [EventArgs]. Fix the subscriber's type parameter.");
+        }
+
+        OneTimeParameterlessEventDelegateContainer<T> container = new(eventType, eventDelegate, priority, sourceFile, sourceLine, sourceMember);
+        GetOrCreateEvent(eventType).Add(container);
+        return container;
+    }
+
 
     /// <summary>
     /// Register a typed async delegate for an event.
     /// </summary>
     public AsyncEventDelegateContainer<T, TArgs> AddNewAsyncDelegate<TArgs>(
-        T eventType, Func<TArgs, Task> eventDelegate, int priority = 0,
+        T eventType, Func<TArgs, Task> eventDelegate, EventPriority priority = default,
 #if DEBUG
         [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
@@ -342,7 +412,7 @@ public class EventManager<T> : IDisposable where T : struct, Enum
     /// Register a parameterless async delegate for an event.
     /// </summary>
     public AsyncEventDelegateContainer<T, Unit> AddNewAsyncDelegate(
-        T eventType, Func<Task> eventDelegate, int priority = 0,
+        T eventType, Func<Task> eventDelegate, EventPriority priority = default,
 #if DEBUG
         [CallerFilePath] string? sourceFile = null,
         [CallerLineNumber] int sourceLine = 0,
