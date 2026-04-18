@@ -36,9 +36,7 @@ public class Event<T> where T : struct, Enum
     private readonly EventManager<T> _eventManager;
     public EventManager<T> EventManager => _eventManager;
 
-    private readonly Dictionary<EventPriority, List<EventDelegateContainer<T>>> _eventDelegates = new();
-
-    private readonly List<EventPriority> _sortedKeys = [];
+    private readonly List<EventDelegateContainer<T>> _delegates = [];
 
     private readonly object _lock = new();
 
@@ -328,17 +326,23 @@ public class Event<T> where T : struct, Enum
     public bool Add(EventDelegateContainer<T> eventDelegate, bool allowMultiple = false)
     {
         bool added = false;
+
         lock (_lock)
         {
-            if (!_eventDelegates.TryGetValue(eventDelegate.Priority, out List<EventDelegateContainer<T>>? value))
+            if (allowMultiple || !_delegates.Any(e => e.Event == eventDelegate.Event))
             {
-                value = [];
-                _eventDelegates[eventDelegate.Priority] = value;
-                SortKeys();
-            }
-            if (allowMultiple || !value.Any(e => e.Event == eventDelegate.Event))
-            {
-                value.Add(eventDelegate);
+                // Binary search for insertion point to maintain sorted order by priority.
+                // Uses upper-bound semantics so equal priorities preserve insertion order (stable).
+                int lo = 0, hi = _delegates.Count;
+                while (lo < hi)
+                {
+                    int mid = (lo + hi) >>> 1;
+                    if (_delegates[mid].Priority.CompareTo(eventDelegate.Priority) <= 0)
+                        lo = mid + 1;
+                    else
+                        hi = mid;
+                }
+                _delegates.Insert(lo, eventDelegate);
                 eventDelegate.Link(this);
                 added = true;
             }
@@ -358,11 +362,7 @@ public class Event<T> where T : struct, Enum
     {
         lock (_lock)
         {
-            bool result = false;
-            if (_eventDelegates.ContainsKey(eventDelegate.Priority))
-            {
-                result = _eventDelegates[eventDelegate.Priority].Remove(eventDelegate);
-            }
+            bool result = _delegates.Remove(eventDelegate);
             if (result)
             {
                 eventDelegate.Unlink();
@@ -383,22 +383,18 @@ public class Event<T> where T : struct, Enum
     {
         lock (_lock)
         {
-            for (int i = 0; i < _sortedKeys.Count; i++)
+            for (int i = 0; i < _delegates.Count; i++)
             {
-                List<EventDelegateContainer<T>> bucket = _eventDelegates[_sortedKeys[i]];
-                for (int j = 0; j < bucket.Count; j++)
+                if (_delegates[i].MatchesDelegate(handler))
                 {
-                    if (bucket[j].MatchesDelegate(handler))
-                    {
-                        EventDelegateContainer<T> container = bucket[j];
-                        bucket.RemoveAt(j);
-                        container.Unlink();
-                        if (_batchDepth > 0)
-                            _batchDirty = true;
-                        else
-                            RebuildSnapshot();
-                        return true;
-                    }
+                    EventDelegateContainer<T> container = _delegates[i];
+                    _delegates.RemoveAt(i);
+                    container.Unlink();
+                    if (_batchDepth > 0)
+                        _batchDirty = true;
+                    else
+                        RebuildSnapshot();
+                    return true;
                 }
             }
             return false;
@@ -406,23 +402,14 @@ public class Event<T> where T : struct, Enum
     }
 
 
-    private void SortKeys()
-    {
-        _sortedKeys.Clear();
-        _sortedKeys.AddRange(_eventDelegates.Keys);
-        EventPriority.Sort(_sortedKeys);
-    }
-
     /// <summary>
     /// Rebuilds the flat, priority-sorted snapshot array and per-<c>TArgs</c> typed
-    /// snapshot arrays from the current delegate buckets.
+    /// snapshot arrays from the current delegate list.
     /// Must be called under <see cref="_lock"/>.
     /// </summary>
     private void RebuildSnapshot()
     {
-        int totalCount = 0;
-        for (int i = 0; i < _sortedKeys.Count; i++)
-            totalCount += _eventDelegates[_sortedKeys[i]].Count;
+        int totalCount = _delegates.Count;
 
         if (totalCount == 0)
         {
@@ -443,13 +430,8 @@ public class Event<T> where T : struct, Enum
 
         // Rent from ArrayPool instead of allocating
         EventDelegateContainer<T>[] snapshot = ArrayPool<EventDelegateContainer<T>>.Shared.Rent(totalCount);
-        int index = 0;
-        for (int i = 0; i < _sortedKeys.Count; i++)
-        {
-            List<EventDelegateContainer<T>> bucket = _eventDelegates[_sortedKeys[i]];
-            for (int j = 0; j < bucket.Count; j++)
-                snapshot[index++] = bucket[j];
-        }
+        for (int i = 0; i < totalCount; i++)
+            snapshot[i] = _delegates[i];
         _cachedSnapshot = snapshot;
         _cachedSnapshotLength = totalCount;
 
@@ -484,22 +466,18 @@ public class Event<T> where T : struct, Enum
         // First pass: collect containers per ArgsType, maintaining priority order.
         Dictionary<Type, List<EventDelegateContainer<T>>>? groups = null;
 
-        for (int i = 0; i < _sortedKeys.Count; i++)
+        for (int i = 0; i < _delegates.Count; i++)
         {
-            List<EventDelegateContainer<T>> bucket = _eventDelegates[_sortedKeys[i]];
-            for (int j = 0; j < bucket.Count; j++)
-            {
-                EventDelegateContainer<T> container = bucket[j];
-                Type argsType = container.ArgsType;
+            EventDelegateContainer<T> container = _delegates[i];
+            Type argsType = container.ArgsType;
 
-                groups ??= new Dictionary<Type, List<EventDelegateContainer<T>>>();
-                if (!groups.TryGetValue(argsType, out List<EventDelegateContainer<T>>? list))
-                {
-                    list = new List<EventDelegateContainer<T>>();
-                    groups[argsType] = list;
-                }
-                list.Add(container);
+            groups ??= new Dictionary<Type, List<EventDelegateContainer<T>>>();
+            if (!groups.TryGetValue(argsType, out List<EventDelegateContainer<T>>? list))
+            {
+                list = new List<EventDelegateContainer<T>>();
+                groups[argsType] = list;
             }
+            list.Add(container);
         }
 
         if (groups is null)
