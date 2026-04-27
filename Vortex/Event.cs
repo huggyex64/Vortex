@@ -129,74 +129,83 @@ public class Event<T> where T : struct, Enum
     }
 
 
-    public void Invoke<TArgs>(TArgs args)
+    public void Invoke<TArgs>(TArgs args, bool safeInvoke = false)
     {
         if (!Enabled) return;
-
-        EventDelegateContainer<T, TArgs>[] typedSnapshot;
-        int typedLength;
+        
+            EventDelegateContainer<T, TArgs>[] typedSnapshot;
+            int typedLength;
 #if DEBUG
-        EventDelegateContainer<T>[] fullSnapshot;
-        int fullLength;
+            EventDelegateContainer<T>[] fullSnapshot;
+            int fullLength;
 #endif
-        lock (_lock)
-        {
-            if (_typedSnapshots.TryGetValue(typeof(TArgs), out object? obj))
+            lock (_lock)
             {
-                typedSnapshot = (EventDelegateContainer<T, TArgs>[])obj;
-                typedLength = _typedSnapshotLengths[typeof(TArgs)];
-            }
-            else
-            {
-                typedSnapshot = [];
-                typedLength = 0;
-            }
-#if DEBUG
-            fullSnapshot = _cachedSnapshot;
-            fullLength = _cachedSnapshotLength;
-#endif
-        }
-
-#if DEBUG
-        // Warn about handlers on this event registered with a different TArgs.
-        if (fullLength > typedLength)
-        {
-            for (int j = 0; j < fullLength; j++)
-            {
-                if (fullSnapshot[j] is not EventDelegateContainer<T, TArgs>)
-                    WarnTypeMismatch<TArgs>(fullSnapshot[j]);
-            }
-        }
-
-        double threshold = SlowHandlerThresholdMs;
-        Stopwatch? sw = threshold > 0 ? Stopwatch.StartNew() : null;
-#endif
-        var span = typedSnapshot.AsSpan(0, typedLength);
-        for (int j = 0; j < span.Length; j++)
-        {
-#if DEBUG
-            sw?.Restart();
-#endif
-            span[j].Invoke(args);
-
-#if DEBUG
-            if (sw is not null)
-            {
-                sw.Stop();
-                double elapsed = sw.Elapsed.TotalMilliseconds;
-                if (elapsed > threshold)
+                if (_typedSnapshots.TryGetValue(typeof(TArgs), out object? obj))
                 {
-                    EventSystemDiagnostics.LogWarning?.Invoke(
-                        $"[EventSystem] Slow handler on {typeof(T).Name}.{_eventType}: " +
-                        $"{elapsed:F2}ms (threshold {threshold:F1}ms). " +
-                        $"Handler: {typedSnapshot[j].SourceDescription}");
+                    typedSnapshot = (EventDelegateContainer<T, TArgs>[])obj;
+                    typedLength = _typedSnapshotLengths[typeof(TArgs)];
+                }
+                else
+                {
+                    typedSnapshot = [];
+                    typedLength = 0;
+                }
+#if DEBUG
+                fullSnapshot = _cachedSnapshot;
+                fullLength = _cachedSnapshotLength;
+#endif
+            }
+
+#if DEBUG
+            // Warn about handlers on this event registered with a different TArgs.
+            if (fullLength > typedLength)
+            {
+                for (int j = 0; j < fullLength; j++)
+                {
+                    if (fullSnapshot[j] is not EventDelegateContainer<T, TArgs>)
+                        WarnTypeMismatch<TArgs>(fullSnapshot[j]);
                 }
             }
+
+            double threshold = SlowHandlerThresholdMs;
+            Stopwatch? sw = threshold > 0 ? Stopwatch.StartNew() : null;
+#endif
+            var span = typedSnapshot.AsSpan(0, typedLength);
+            for (int j = 0; j < span.Length; j++)
+            {
+#if DEBUG
+                sw?.Restart();
+#endif
+                try
+                {
+                    span[j].Invoke(args);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine();
+                }
+
+#if DEBUG
+                if (sw is not null)
+                {
+                    sw.Stop();
+                    double elapsed = sw.Elapsed.TotalMilliseconds;
+                    if (elapsed > threshold)
+                    {
+                        EventSystemDiagnostics.LogWarning?.Invoke(
+                            $"[EventSystem] Slow handler on {typeof(T).Name}.{_eventType}: " +
+                            $"{elapsed:F2}ms (threshold {threshold:F1}ms). " +
+                            $"Handler: {typedSnapshot[j].SourceDescription}");
+                    }
+                }
 #endif
 
-            if (CancellableCheck<TArgs>.IsCancellable && args is ICancellable { Cancelled: true })
-                break;
-        }
+                if (CancellableCheck<TArgs>.IsCancellable && args is ICancellable { Cancelled: true })
+                    break;
+            }
+        
+
     }
 
     /// <summary>
@@ -257,10 +266,17 @@ public class Event<T> where T : struct, Enum
 #if DEBUG
             sw?.Restart();
 #endif
-            if (typedSnapshot[j] is IAsyncInvocable<TArgs> asyncHandler)
-                await asyncHandler.InvokeAsync(args).ConfigureAwait(false);
-            else
-                typedSnapshot[j].Invoke(args);
+            try
+            {
+                if (typedSnapshot[j] is IAsyncInvocable<TArgs> asyncHandler)
+                    await asyncHandler.InvokeAsync(args).ConfigureAwait(false);
+                else
+                    typedSnapshot[j].Invoke(args);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
 
 #if DEBUG
             if (sw is not null)
@@ -280,6 +296,7 @@ public class Event<T> where T : struct, Enum
             if (CancellableCheck<TArgs>.IsCancellable && args is ICancellable { Cancelled: true })
                 break;
         }
+
     }
 
     /// <summary>
