@@ -55,7 +55,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Per-<c>TArgs</c> typed COW snapshots keyed by <see cref="Type"/>.
-    /// Each value is a <c>EventDelegateContainer&lt;T, TArgs&gt;[]</c> stored as
+    /// Each value is a <c>EventDelegateContainer<T, TArgs>[]</c> stored as
     /// <see cref="object"/>.
     /// <para>
     /// <see cref="Invoke{TArgs}"/> retrieves the matching typed array with a single
@@ -133,79 +133,81 @@ public class Event<T> where T : struct, Enum
     {
         if (!Enabled) return;
         
-            EventDelegateContainer<T, TArgs>[] typedSnapshot;
-            int typedLength;
+        EventDelegateContainer<T, TArgs>[] typedSnapshot;
+        int typedLength;
 #if DEBUG
-            EventDelegateContainer<T>[] fullSnapshot;
-            int fullLength;
+        EventDelegateContainer<T>[] fullSnapshot;
+        int fullLength;
 #endif
-            lock (_lock)
+        lock (_lock)
+        {
+            if (_typedSnapshots.TryGetValue(typeof(TArgs), out object? obj))
             {
-                if (_typedSnapshots.TryGetValue(typeof(TArgs), out object? obj))
-                {
-                    typedSnapshot = (EventDelegateContainer<T, TArgs>[])obj;
-                    typedLength = _typedSnapshotLengths[typeof(TArgs)];
-                }
-                else
-                {
-                    typedSnapshot = [];
-                    typedLength = 0;
-                }
+                typedSnapshot = (EventDelegateContainer<T, TArgs>[])obj;
+                typedLength = _typedSnapshotLengths[typeof(TArgs)];
+            }
+            else
+            {
+                typedSnapshot = [];
+                typedLength = 0;
+            }
 #if DEBUG
-                fullSnapshot = _cachedSnapshot;
-                fullLength = _cachedSnapshotLength;
+            fullSnapshot = _cachedSnapshot;
+            fullLength = _cachedSnapshotLength;
 #endif
+        }
+
+#if DEBUG
+        // Warn about handlers on this event registered with a different TArgs.
+        if (fullLength > typedLength)
+        {
+            for (int j = 0; j < fullLength; j++)
+            {
+                if (fullSnapshot[j] is not EventDelegateContainer<T, TArgs>)
+                    WarnTypeMismatch<TArgs>(fullSnapshot[j]);
+            }
+        }
+
+        double threshold = SlowHandlerThresholdMs;
+        Stopwatch? sw = threshold > 0 ? Stopwatch.StartNew() : null;
+#endif
+
+        var span = typedSnapshot.AsSpan(0, typedLength);
+        for (int j = 0; j < span.Length; j++)
+        {
+#if DEBUG
+            sw?.Restart();
+#endif
+            try
+            {
+                span[j].Invoke(args);
+            }
+            catch (Exception ex)
+            {
+                EventSystemDiagnostics.LogError?.Invoke(
+                    $"[Vortex] Exception in handler for {typeof(T).Name}.{EventType}: {ex.Message}");
+
+                throw;  // Re-throw so caller knows something went wrong
             }
 
 #if DEBUG
-            // Warn about handlers on this event registered with a different TArgs.
-            if (fullLength > typedLength)
+            if (sw is not null)
             {
-                for (int j = 0; j < fullLength; j++)
+                sw.Stop();
+                double elapsed = sw.Elapsed.TotalMilliseconds;
+                if (elapsed > threshold)
                 {
-                    if (fullSnapshot[j] is not EventDelegateContainer<T, TArgs>)
-                        WarnTypeMismatch<TArgs>(fullSnapshot[j]);
+                    EventSystemDiagnostics.LogWarning?.Invoke(
+                        $"[EventSystem] Slow handler on {typeof(T).Name}.{EventType}: " +
+                        $"{elapsed:F2}ms (threshold {threshold:F1}ms). " +
+                        $"Handler: {typedSnapshot[j].SourceDescription}");
                 }
             }
-
-            double threshold = SlowHandlerThresholdMs;
-            Stopwatch? sw = threshold > 0 ? Stopwatch.StartNew() : null;
-#endif
-            var span = typedSnapshot.AsSpan(0, typedLength);
-            for (int j = 0; j < span.Length; j++)
-            {
-#if DEBUG
-                sw?.Restart();
-#endif
-                try
-                {
-                    span[j].Invoke(args);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine();
-                }
-
-#if DEBUG
-                if (sw is not null)
-                {
-                    sw.Stop();
-                    double elapsed = sw.Elapsed.TotalMilliseconds;
-                    if (elapsed > threshold)
-                    {
-                        EventSystemDiagnostics.LogWarning?.Invoke(
-                            $"[EventSystem] Slow handler on {typeof(T).Name}.{_eventType}: " +
-                            $"{elapsed:F2}ms (threshold {threshold:F1}ms). " +
-                            $"Handler: {typedSnapshot[j].SourceDescription}");
-                    }
-                }
 #endif
 
-                if (CancellableCheck<TArgs>.IsCancellable && args is ICancellable { Cancelled: true })
-                    break;
-            }
-        
-
+            if (CancellableCheck<TArgs>.IsCancellable && args is ICancellable { Cancelled: true })
+                break;
+        }
     }
 
     /// <summary>
@@ -275,7 +277,10 @@ public class Event<T> where T : struct, Enum
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                EventSystemDiagnostics.LogError?.Invoke(
+                    $"[Vortex] Exception in handler for {typeof(T).Name}.{EventType}: {ex.Message}");
+
+                throw;  // Re-throw (will be wrapped in AggregateException for async)
             }
 
 #if DEBUG
@@ -286,7 +291,7 @@ public class Event<T> where T : struct, Enum
                 if (elapsed > threshold)
                 {
                     EventSystemDiagnostics.LogWarning?.Invoke(
-                        $"[EventSystem] Slow handler on {typeof(T).Name}.{_eventType}: " +
+                        $"[EventSystem] Slow handler on {typeof(T).Name}.{EventType}: " +
                         $"{elapsed:F2}ms (threshold {threshold:F1}ms). " +
                         $"Handler: {typedSnapshot[j].SourceDescription}");
                 }
@@ -296,7 +301,6 @@ public class Event<T> where T : struct, Enum
             if (CancellableCheck<TArgs>.IsCancellable && args is ICancellable { Cancelled: true })
                 break;
         }
-
     }
 
     /// <summary>
@@ -333,7 +337,7 @@ public class Event<T> where T : struct, Enum
             registeredArgs = containerType.GenericTypeArguments[1];
 
         EventSystemDiagnostics.LogWarning?.Invoke(
-            $"[EventSystem] Type mismatch on {typeof(T).Name}.{_eventType}: " +
+            $"[EventSystem] Type mismatch on {typeof(T).Name}.{EventType}: " +
             $"handler registered for '{registeredArgs?.Name ?? "unknown"}' " +
             $"but invoked with '{typeof(TArgs).Name}'. Handler was skipped. " +
             $"(registered at {container.SourceDescription})");
@@ -458,7 +462,7 @@ public class Event<T> where T : struct, Enum
     /// <summary>
     /// Rebuilds per-<c>TArgs</c> typed snapshot arrays from the priority-sorted
     /// delegate buckets.  Each resulting array is a properly typed
-    /// <c>EventDelegateContainer&lt;T, TArgs&gt;[]</c>, enabling
+    /// <c>EventDelegateContainer<T, TArgs>[]</c>, enabling
     /// <see cref="Invoke{TArgs}"/> to iterate with direct method calls and
     /// zero per-element type checks.
     /// Must be called under <see cref="_lock"/>.
@@ -530,7 +534,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Generic helper invoked through a cached delegate. Returns a rented typed array
-    /// to its <c>ArrayPool&lt;EventDelegateContainer&lt;T, TArgs&gt;&gt;.Shared</c>.
+    /// to its <c>ArrayPool<EventDelegateContainer<T, TArgs>>.Shared</c>.
     /// </summary>
     private static void ReturnTypedArray<TArgs>(object array)
     {
@@ -572,7 +576,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Per-<c>TArgs</c> cached factory delegates that build strongly typed
-    /// <c>EventDelegateContainer&lt;T, TArgs&gt;[]</c> from a list of base containers.
+    /// <c>EventDelegateContainer<T, TArgs>[]</c> from a list of base containers.
     /// Avoids repeated <see cref="Array.CreateInstance(Type, int)"/> and per-element
     /// <see cref="Array.SetValue(object, int)"/> overhead.
     /// </summary>
@@ -580,7 +584,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Per-<c>TArgs</c> cached methods that return rented arrays to the appropriate
-    /// <c>ArrayPool&lt;EventDelegateContainer&lt;T, TArgs&gt;&gt;.Shared</c>.
+    /// <c>ArrayPool<EventDelegateContainer<T, TArgs>>.Shared</c>.
     /// </summary>
     private static readonly ConcurrentDictionary<Type, Action<object>> s_arrayReturnMethods = new();
 }
