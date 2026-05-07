@@ -55,7 +55,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Per-<c>TArgs</c> typed COW snapshots keyed by <see cref="Type"/>.
-    /// Each value is a <c>EventDelegateContainer&lt;T, TArgs&gt;[]</c> stored as
+    /// Each value is a <c>EventDelegateContainer<T, TArgs></c> stored as
     /// <see cref="object"/>.
     /// <para>
     /// <see cref="Invoke{TArgs}"/> retrieves the matching typed array with a single
@@ -183,7 +183,9 @@ public class Event<T> where T : struct, Enum
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine();
+                    EventSystemDiagnostics.LogError?.Invoke(
+                        $"[Vortex] Unhandled exception in handler for {typeof(T).Name}.{_eventType} " +
+                        $"(Priority: {span[j].Priority}, Handler: {span[j].SourceDescription ?? "unknown"}): {ex}");
                 }
 
 #if DEBUG
@@ -275,7 +277,9 @@ public class Event<T> where T : struct, Enum
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                EventSystemDiagnostics.LogError?.Invoke(
+                    $"[Vortex] Unhandled exception in handler for {typeof(T).Name}.{_eventType} " +
+                    $"(Priority: {typedSnapshot[j].Priority}, Handler: {typedSnapshot[j].SourceDescription ?? "unknown"}): {ex}");
             }
 
 #if DEBUG
@@ -458,7 +462,7 @@ public class Event<T> where T : struct, Enum
     /// <summary>
     /// Rebuilds per-<c>TArgs</c> typed snapshot arrays from the priority-sorted
     /// delegate buckets.  Each resulting array is a properly typed
-    /// <c>EventDelegateContainer&lt;T, TArgs&gt;[]</c>, enabling
+    /// <c>EventDelegateContainer<T, TArgs>[]</c>, enabling
     /// <see cref="Invoke{TArgs}"/> to iterate with direct method calls and
     /// zero per-element type checks.
     /// Must be called under <see cref="_lock"/>.
@@ -516,7 +520,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Generic helper invoked through a cached delegate.  Creates a strongly typed
-    /// array and populates it with simple reference casts — no <see cref="Array.SetValue(object, int)"/>
+    /// array and populates it with simple reference casts — no <see cref="Array.SetValue(object, int)"/> 
     /// overhead.
     /// </summary>
     private static object BuildTypedArray<TArgs>(List<EventDelegateContainer<T>> list)
@@ -530,7 +534,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Generic helper invoked through a cached delegate. Returns a rented typed array
-    /// to its <c>ArrayPool&lt;EventDelegateContainer&lt;T, TArgs&gt;&gt;.Shared</c>.
+    /// to its <c>ArrayPool<EventDelegateContainer<T, TArgs>>.Shared</c>.
     /// </summary>
     private static void ReturnTypedArray<TArgs>(object array)
     {
@@ -572,7 +576,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Per-<c>TArgs</c> cached factory delegates that build strongly typed
-    /// <c>EventDelegateContainer&lt;T, TArgs&gt;[]</c> from a list of base containers.
+    /// <c>EventDelegateContainer<T, TArgs>[]</c> from a list of base containers.
     /// Avoids repeated <see cref="Array.CreateInstance(Type, int)"/> and per-element
     /// <see cref="Array.SetValue(object, int)"/> overhead.
     /// </summary>
@@ -580,7 +584,7 @@ public class Event<T> where T : struct, Enum
 
     /// <summary>
     /// Per-<c>TArgs</c> cached methods that return rented arrays to the appropriate
-    /// <c>ArrayPool&lt;EventDelegateContainer&lt;T, TArgs&gt;&gt;.Shared</c>.
+    /// <c>ArrayPool<EventDelegateContainer<T, TArgs>>.Shared</c>.
     /// </summary>
     private static readonly ConcurrentDictionary<Type, Action<object>> s_arrayReturnMethods = new();
 }
