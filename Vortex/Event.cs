@@ -129,7 +129,7 @@ public class Event<T> where T : struct, Enum
     }
 
 
-    public void Invoke<TArgs>(TArgs args, bool safeInvoke = false)
+    public void Invoke<TArgs>(TArgs args)
     {
         if (!Enabled) return;
         
