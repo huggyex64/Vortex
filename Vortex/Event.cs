@@ -346,7 +346,7 @@ public class Event<T> where T : struct, Enum
 
         lock (_lock)
         {
-            if (allowMultiple || !_delegates.Any(e => e.Event == eventDelegate.Event))
+            if (allowMultiple || !ContainsDelegate(eventDelegate.GetDelegate()))
             {
                 // Binary search for insertion point to maintain sorted order by priority.
                 // Uses upper-bound semantics so equal priorities preserve insertion order (stable).
@@ -415,6 +415,64 @@ public class Event<T> where T : struct, Enum
                 }
             }
             return false;
+        }
+    }
+
+    private bool ContainsDelegate(Delegate? handler)
+    {
+        if (handler == null) return false;
+        for (int i = 0; i < _delegates.Count; i++)
+        {
+            if (_delegates[i].MatchesDelegate(handler)) return true;
+        }
+        return false;
+    }
+
+    public void EnableByTag(string tag)
+    {
+        lock (_lock)
+        {
+            foreach (var del in _delegates)
+            {
+                if (del.HasTag(tag)) del.Enable();
+            }
+        }
+    }
+
+    public void DisableByTag(string tag)
+    {
+        lock (_lock)
+        {
+            foreach (var del in _delegates)
+            {
+                if (del.HasTag(tag)) del.Disable();
+            }
+        }
+    }
+
+    public void RemoveByTag(string tag)
+    {
+        lock (_lock)
+        {
+            bool removed = false;
+            for (int i = _delegates.Count - 1; i >= 0; i--)
+            {
+                if (_delegates[i].HasTag(tag))
+                {
+                    var container = _delegates[i];
+                    _delegates.RemoveAt(i);
+                    container.Unlink();
+                    removed = true;
+                }
+            }
+
+            if (removed)
+            {
+                if (_batchDepth > 0)
+                    _batchDirty = true;
+                else
+                    RebuildSnapshot();
+            }
         }
     }
 

@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="Vortex.Generators/Vortex.Generators.csproj" />
   <Project Path="Vortex/Vortex.csproj" />
+  <Project Path="Vortex.Tests/Vortex.Tests.csproj" />
 </Solution>

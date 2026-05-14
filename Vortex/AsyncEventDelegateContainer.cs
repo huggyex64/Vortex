@@ -25,15 +25,17 @@ public class AsyncEventDelegateContainer<T, TArgs> : EventDelegateContainer<T, T
 
     private readonly Func<TArgs, Task>? _asyncDelegate;
 
-    public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate, EventPriority priority = default)
-        : base(eventType, priority)
+    public override Delegate? GetDelegate() => _asyncDelegate;
+
+    public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate, EventPriority priority = default, string[]? tags = null)
+        : base(eventType, priority, tags)
     {
         _asyncDelegate = asyncDelegate;
     }
 
 public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate, EventPriority priority,
-    string? sourceFile, int sourceLine, string? sourceMember)
-    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+    string? sourceFile, int sourceLine, string? sourceMember, string[]? tags = null)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember, tags)
 {
     _asyncDelegate = asyncDelegate;
 }
@@ -42,14 +44,14 @@ public AsyncEventDelegateContainer(T eventType, Func<TArgs, Task> asyncDelegate,
     /// Protected constructor for subclasses that provide their own invocation
     /// logic and do not use the <see cref="_asyncDelegate"/> field.
     /// </summary>
-    protected AsyncEventDelegateContainer(T eventType, EventPriority priority)
-        : base(eventType, priority)
+    protected AsyncEventDelegateContainer(T eventType, EventPriority priority, string[]? tags = null)
+        : base(eventType, priority, tags)
     {
     }
 
 protected AsyncEventDelegateContainer(T eventType, EventPriority priority,
-    string? sourceFile, int sourceLine, string? sourceMember)
-    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+    string? sourceFile, int sourceLine, string? sourceMember, string[]? tags = null)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember, tags)
 {
 }
 
@@ -92,15 +94,17 @@ public sealed class ParameterlessAsyncEventDelegateContainer<T> : AsyncEventDele
 
     private readonly Func<Task> _asyncAction;
 
-    public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAction, EventPriority priority = default)
-        : base(eventType, priority)
+    public override Delegate? GetDelegate() => _asyncAction;
+
+    public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAction, EventPriority priority = default, string[]? tags = null)
+        : base(eventType, priority, tags)
     {
         _asyncAction = asyncAction;
     }
 
 public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAction, EventPriority priority,
-    string? sourceFile, int sourceLine, string? sourceMember)
-    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+    string? sourceFile, int sourceLine, string? sourceMember, string[]? tags = null)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember, tags)
 {
     _asyncAction = asyncAction;
 }

@@ -13,5 +13,6 @@ public interface IEventDelegateContainer : IDisposable
     public void Disable();
 
     public bool Added { get; }
+    public bool HasTag(string tag);
 }
 

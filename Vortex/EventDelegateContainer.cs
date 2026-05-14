@@ -52,6 +52,11 @@ public abstract class EventDelegateContainer<T> : IEventDelegateContainer where 
     public abstract Type ArgsType { get; }
 
     /// <summary>
+    /// Returns the underlying delegate wrapped by this container.
+    /// </summary>
+    public abstract Delegate? GetDelegate();
+
+    /// <summary>
     /// Returns <c>true</c> when this container wraps the specified handler delegate.
     /// Used by the generated <c>-=</c> event accessor path.
     /// </summary>
@@ -92,14 +97,29 @@ public string SourceDescription =>
         Event = null;
     }
 
-    protected EventDelegateContainer(T eventType, EventPriority priority)
+    private string[]? _tags;
+    public string[]? Tags => _tags;
+
+    public bool HasTag(string tag)
+    {
+        if (_tags == null) return false;
+        for (int i = 0; i < _tags.Length; i++)
+        {
+            if (string.Equals(_tags[i], tag, StringComparison.Ordinal))
+                return true;
+        }
+        return false;
+    }
+
+    protected EventDelegateContainer(T eventType, EventPriority priority, string[]? tags = null)
     {
         this.priority = priority;
         this.eventType = eventType;
+        this._tags = tags;
     }
 
-    protected EventDelegateContainer(T eventType, EventPriority priority, string? sourceFile, int sourceLine, string? sourceMember)
-        : this(eventType, priority)
+    protected EventDelegateContainer(T eventType, EventPriority priority, string? sourceFile, int sourceLine, string? sourceMember, string[]? tags = null)
+        : this(eventType, priority, tags)
     {
 #if DEBUG
         SourceFile = sourceFile is not null ? System.IO.Path.GetFileName(sourceFile) : null;
@@ -142,15 +162,17 @@ public class EventDelegateContainer<T, TArgs> : EventDelegateContainer<T>, IInvo
 
     private readonly Action<TArgs>? eventDelegate;
 
-    public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, EventPriority priority = default)
-        : base(eventType, priority)
+    public override Delegate? GetDelegate() => eventDelegate;
+
+    public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, EventPriority priority = default, string[]? tags = null)
+        : base(eventType, priority, tags)
     {
         this.eventDelegate = eventDelegate;
     }
 
 public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, EventPriority priority,
-    string? sourceFile, int sourceLine, string? sourceMember)
-    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+    string? sourceFile, int sourceLine, string? sourceMember, string[]? tags = null)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember, tags)
 {
     this.eventDelegate = eventDelegate;
 }
@@ -159,14 +181,14 @@ public EventDelegateContainer(T eventType, Action<TArgs> eventDelegate, EventPri
     /// Protected constructor for subclasses that provide their own invocation
     /// logic and do not use the <see cref="eventDelegate"/> field.
     /// </summary>
-    protected EventDelegateContainer(T eventType, EventPriority priority)
-        : base(eventType, priority)
+    protected EventDelegateContainer(T eventType, EventPriority priority, string[]? tags = null)
+        : base(eventType, priority, tags)
     {
     }
 
 protected EventDelegateContainer(T eventType, EventPriority priority,
-    string? sourceFile, int sourceLine, string? sourceMember)
-    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+    string? sourceFile, int sourceLine, string? sourceMember, string[]? tags = null)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember, tags)
 {
 }
 
@@ -189,15 +211,17 @@ public sealed class ParameterlessEventDelegateContainer<T> : EventDelegateContai
 
     private readonly Action _action;
 
-    public ParameterlessEventDelegateContainer(T eventType, Action action, EventPriority priority = default)
-        : base(eventType, priority)
+    public override Delegate? GetDelegate() => _action;
+
+    public ParameterlessEventDelegateContainer(T eventType, Action action, EventPriority priority = default, string[]? tags = null)
+        : base(eventType, priority, tags)
     {
         _action = action;
     }
 
 public ParameterlessEventDelegateContainer(T eventType, Action action, EventPriority priority,
-    string? sourceFile, int sourceLine, string? sourceMember)
-    : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+    string? sourceFile, int sourceLine, string? sourceMember, string[]? tags = null)
+    : base(eventType, priority, sourceFile, sourceLine, sourceMember, tags)
 {
     _action = action;
 }
@@ -216,12 +240,14 @@ public sealed class OneTimeEventDelegateContainer<T, TArgs> : EventDelegateConta
 {
     private readonly Action<TArgs>? _eventDelegate;
 
+    public override Delegate? GetDelegate() => _eventDelegate;
+
     public override Type ArgsType => typeof(TArgs);
     public override bool MatchesDelegate(Delegate handler) => handler != null && handler.Equals(_eventDelegate);
 
     public OneTimeEventDelegateContainer(T eventType, Action<TArgs> eventDelegate, EventPriority priority,
-        string? sourceFile, int sourceLine, string? sourceMember)
-        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+        string? sourceFile, int sourceLine, string? sourceMember, string[]? tags = null)
+        : base(eventType, priority, sourceFile, sourceLine, sourceMember, tags)
     {
         _eventDelegate = eventDelegate;
     }
@@ -241,11 +267,13 @@ public sealed class OneTimeParameterlessEventDelegateContainer<T> : EventDelegat
 {
     private readonly Action _action;
 
+    public override Delegate? GetDelegate() => _action;
+
     public override bool MatchesDelegate(Delegate handler) => handler != null && handler.Equals(_action);
 
     public OneTimeParameterlessEventDelegateContainer(T eventType, Action action, EventPriority priority,
-        string? sourceFile, int sourceLine, string? sourceMember)
-        : base(eventType, priority, sourceFile, sourceLine, sourceMember)
+        string? sourceFile, int sourceLine, string? sourceMember, string[]? tags = null)
+        : base(eventType, priority, sourceFile, sourceLine, sourceMember, tags)
     {
         _action = action;
     }

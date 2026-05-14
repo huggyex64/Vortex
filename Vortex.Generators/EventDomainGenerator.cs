@@ -347,6 +347,26 @@ public class EventDomainGenerator : IIncrementalGenerator
             }
         }
 
+        // --- Generate tag-based management methods ---
+        sb.AppendLine($"{ci}/// <summary>Enables all handlers in this domain that have the specified tag.</summary>");
+        sb.AppendLine($"{ci}public{memberStatic} void EnableByTag(string tag) => {managerField}.EnableByTag(tag);");
+        sb.AppendLine();
+        sb.AppendLine($"{ci}/// <summary>Disables all handlers in this domain that have the specified tag.</summary>");
+        sb.AppendLine($"{ci}public{memberStatic} void DisableByTag(string tag) => {managerField}.DisableByTag(tag);");
+        sb.AppendLine();
+        sb.AppendLine($"{ci}/// <summary>Removes all handlers in this domain that have the specified tag.</summary>");
+        sb.AppendLine($"{ci}public{memberStatic} void RemoveByTag(string tag) => {managerField}.RemoveByTag(tag);");
+        sb.AppendLine();
+        sb.AppendLine($"{ci}/// <summary>Enables all handlers across all global managers of this domain that have the specified tag.</summary>");
+        sb.AppendLine($"{ci}public static void GlobalEnableByTag(string tag) => global::Vortex.EventManager<EventTypes>.GlobalEnableByTag(tag);");
+        sb.AppendLine();
+        sb.AppendLine($"{ci}/// <summary>Disables all handlers across all global managers of this domain that have the specified tag.</summary>");
+        sb.AppendLine($"{ci}public static void GlobalDisableByTag(string tag) => global::Vortex.EventManager<EventTypes>.GlobalDisableByTag(tag);");
+        sb.AppendLine();
+        sb.AppendLine($"{ci}/// <summary>Removes all handlers across all global managers of this domain that have the specified tag.</summary>");
+        sb.AppendLine($"{ci}public static void GlobalRemoveByTag(string tag) => global::Vortex.EventManager<EventTypes>.GlobalRemoveByTag(tag);");
+        sb.AppendLine();
+
         // Close domain class
         sb.AppendLine($"{indent}}}");
 
@@ -402,8 +422,9 @@ public class EventDomainGenerator : IIncrementalGenerator
         sb.AppendLine($"{ci}    global::System.Action handler, global::Vortex.EventPriority priority = default,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
-        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
-        sb.AppendLine($"{ci}    => {managerField}.AddNewDelegate(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
+        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null,");
+        sb.AppendLine($"{ci}    string[]? tags = null)");
+        sb.AppendLine($"{ci}    => {managerField}.AddNewDelegate(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember, false, tags);");
         sb.AppendLine();
 
         // SubscribeAsync (parameterless)
@@ -413,8 +434,9 @@ public class EventDomainGenerator : IIncrementalGenerator
         sb.AppendLine($"{ci}    global::System.Func<global::System.Threading.Tasks.Task> handler, global::Vortex.EventPriority priority = default,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
-        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
-        sb.AppendLine($"{ci}    => {managerField}.AddNewAsyncDelegate(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
+        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null,");
+        sb.AppendLine($"{ci}    string[]? tags = null)");
+        sb.AppendLine($"{ci}    => {managerField}.AddNewAsyncDelegate(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember, false, tags);");
         sb.AppendLine();
 
         // SubscribeOnce (parameterless)
@@ -424,8 +446,9 @@ public class EventDomainGenerator : IIncrementalGenerator
         sb.AppendLine($"{ci}    global::System.Action handler, global::Vortex.EventPriority priority = default,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
-        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
-        sb.AppendLine($"{ci}    => {managerField}.SubscribeOnce(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
+        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null,");
+        sb.AppendLine($"{ci}    string[]? tags = null)");
+        sb.AppendLine($"{ci}    => {managerField}.SubscribeOnce(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember, tags);");
         sb.AppendLine();
     }
 
@@ -463,8 +486,9 @@ public class EventDomainGenerator : IIncrementalGenerator
         sb.AppendLine($"{ci}    global::System.Action<{argsType}> handler, global::Vortex.EventPriority priority = default,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
-        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
-        sb.AppendLine($"{ci}    => {managerField}.AddNewDelegate<{argsType}>(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
+        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null,");
+        sb.AppendLine($"{ci}    string[]? tags = null)");
+        sb.AppendLine($"{ci}    => {managerField}.AddNewDelegate<{argsType}>(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember, false, tags);");
         sb.AppendLine();
 
         // SubscribeAsync (typed)
@@ -474,8 +498,9 @@ public class EventDomainGenerator : IIncrementalGenerator
         sb.AppendLine($"{ci}    global::System.Func<{argsType}, global::System.Threading.Tasks.Task> handler, global::Vortex.EventPriority priority = default,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
-        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
-        sb.AppendLine($"{ci}    => {managerField}.AddNewAsyncDelegate<{argsType}>(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
+        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null,");
+        sb.AppendLine($"{ci}    string[]? tags = null)");
+        sb.AppendLine($"{ci}    => {managerField}.AddNewAsyncDelegate<{argsType}>(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember, false, tags);");
         sb.AppendLine();
 
         // SubscribeOnce (typed)
@@ -485,8 +510,9 @@ public class EventDomainGenerator : IIncrementalGenerator
         sb.AppendLine($"{ci}    global::System.Action<{argsType}> handler, global::Vortex.EventPriority priority = default,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerFilePath] string? sourceFile = null,");
         sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerLineNumber] int sourceLine = 0,");
-        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null)");
-        sb.AppendLine($"{ci}    => {managerField}.SubscribeOnce<{argsType}>(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember);");
+        sb.AppendLine($"{ci}    [global::System.Runtime.CompilerServices.CallerMemberName] string? sourceMember = null,");
+        sb.AppendLine($"{ci}    string[]? tags = null)");
+        sb.AppendLine($"{ci}    => {managerField}.SubscribeOnce<{argsType}>(EventTypes.{name}, handler, priority, sourceFile, sourceLine, sourceMember, tags);");
         sb.AppendLine();
     }
 
