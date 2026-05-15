@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Vortex;
@@ -313,5 +314,108 @@ public class EventSystemTests : IDisposable
 
         // Assert
         calls.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task WaitForEventAsync_ShouldCompleteOnNextInvoke()
+    {
+        var manager = CreateManager<TestEvents>();
+
+        Task<SimpleArgs> waiter = manager.WaitForEventAsync<SimpleArgs>(TestEvents.Simple);
+
+        waiter.IsCompleted.Should().BeFalse();
+        manager.InvokeEvent(TestEvents.Simple, new SimpleArgs("hello"));
+
+        SimpleArgs result = await waiter;
+        result.Message.Should().Be("hello");
+    }
+
+    [Fact]
+    public async Task WaitForEventAsync_ShouldAutoUnsubscribeAfterCompletion()
+    {
+        var manager = CreateManager<TestEvents>();
+        int sideHandlerCalls = 0;
+        manager.AddNewDelegate<SimpleArgs>(TestEvents.Simple, _ => sideHandlerCalls++);
+
+        Task<SimpleArgs> waiter = manager.WaitForEventAsync<SimpleArgs>(TestEvents.Simple);
+        manager.InvokeEvent(TestEvents.Simple, new SimpleArgs("first"));
+        await waiter;
+
+        // Second invoke should not affect the completed waiter, but should still hit the side handler.
+        manager.InvokeEvent(TestEvents.Simple, new SimpleArgs("second"));
+        sideHandlerCalls.Should().Be(2);
+
+        // The waiter task should still hold the first result, not the second.
+        waiter.Result.Message.Should().Be("first");
+    }
+
+    [Fact]
+    public async Task WaitForEventAsync_WithPredicate_ShouldIgnoreNonMatchingInvokes()
+    {
+        var manager = CreateManager<TestEvents>();
+
+        Task<SimpleArgs> waiter = manager.WaitForEventAsync<SimpleArgs>(
+            TestEvents.Simple, args => args.Message == "match");
+
+        manager.InvokeEvent(TestEvents.Simple, new SimpleArgs("skip-1"));
+        manager.InvokeEvent(TestEvents.Simple, new SimpleArgs("skip-2"));
+        waiter.IsCompleted.Should().BeFalse();
+
+        manager.InvokeEvent(TestEvents.Simple, new SimpleArgs("match"));
+        SimpleArgs result = await waiter;
+        result.Message.Should().Be("match");
+    }
+
+    [Fact]
+    public async Task WaitForEventAsync_ShouldCancelOnTokenCancellation()
+    {
+        var manager = CreateManager<TestEvents>();
+        using CancellationTokenSource cts = new();
+
+        Task<SimpleArgs> waiter = manager.WaitForEventAsync<SimpleArgs>(TestEvents.Simple, cts.Token);
+        cts.Cancel();
+
+        Func<Task> act = async () => await waiter;
+        await act.Should().ThrowAsync<TaskCanceledException>();
+
+        // After cancellation, invoking should not throw or affect anything.
+        manager.InvokeEvent(TestEvents.Simple, new SimpleArgs("ignored"));
+        waiter.IsCanceled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void WaitForEventAsync_AlreadyCancelledToken_ShouldReturnCanceledTask()
+    {
+        var manager = CreateManager<TestEvents>();
+        using CancellationTokenSource cts = new();
+        cts.Cancel();
+
+        Task<SimpleArgs> waiter = manager.WaitForEventAsync<SimpleArgs>(TestEvents.Simple, cts.Token);
+
+        waiter.IsCanceled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task WaitForEventAsync_Parameterless_ShouldCompleteOnNextInvoke()
+    {
+        var manager = CreateManager<TestEvents>();
+
+        Task waiter = manager.WaitForEventAsync(TestEvents.Simple);
+
+        waiter.IsCompleted.Should().BeFalse();
+        manager.InvokeEvent(TestEvents.Simple);
+
+        await waiter;
+        waiter.Status.Should().Be(TaskStatus.RanToCompletion);
+    }
+
+    [Fact]
+    public void WaitForEventAsync_ShouldThrowOnContractMismatch()
+    {
+        var manager = CreateManager<ContractEvents>();
+
+        Action act = () => manager.WaitForEventAsync<CancellableArgs>(ContractEvents.ValidEvent);
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*WaitForEventAsync invoked with 'CancellableArgs' but the event declares 'SimpleArgs'*");
     }
 }

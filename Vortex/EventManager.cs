@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Vortex;
 
-public class EventManager<T> : IDisposable where T : struct, Enum
+public partial class EventManager<T> : IDisposable where T : struct, Enum
 {
     private static readonly List<EventManager<T>> s_instances = new List<EventManager<T>>();
     private static readonly object s_instancesLock = new();
