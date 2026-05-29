@@ -2,9 +2,11 @@
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-namespace Vortex;
+namespace Vortex {
+
 
 /// <summary>
 /// Lightweight accessor for a parameterless event slot.
@@ -57,6 +59,41 @@ public readonly struct EventAccessor<TEnum> where TEnum : struct, Enum
         accessor._manager.RemoveDelegate(accessor._eventType, handler);
         return accessor;
     }
+
+    /// <summary>
+    /// Subscribes a parameterless handler to the event. Supports priority, tags, and source location capture.
+    /// Dispose the returned container to unsubscribe.
+    /// </summary>
+    public EventDelegateContainer<TEnum, Unit> Subscribe(
+        Action handler, EventPriority priority = default,
+        [CallerFilePath] string? sourceFile = null,
+        [CallerLineNumber] int sourceLine = 0,
+        [CallerMemberName] string? sourceMember = null,
+        string[]? tags = null)
+        => _manager.AddNewDelegate(_eventType, handler, priority, sourceFile, sourceLine, sourceMember, false, tags);
+
+    /// <summary>
+    /// Subscribes a parameterless async handler to the event. Supports priority, tags, and source location capture.
+    /// Dispose the returned container to unsubscribe.
+    /// </summary>
+    public AsyncEventDelegateContainer<TEnum, Unit> SubscribeAsync(
+        Func<Task> handler, EventPriority priority = default,
+        [CallerFilePath] string? sourceFile = null,
+        [CallerLineNumber] int sourceLine = 0,
+        [CallerMemberName] string? sourceMember = null,
+        string[]? tags = null)
+        => _manager.AddNewAsyncDelegate(_eventType, handler, priority, sourceFile, sourceLine, sourceMember, false, tags);
+
+    /// <summary>
+    /// Subscribes a parameterless handler that automatically unsubscribes after one invocation.
+    /// </summary>
+    public OneTimeParameterlessEventDelegateContainer<TEnum> SubscribeOnce(
+        Action handler, EventPriority priority = default,
+        [CallerFilePath] string? sourceFile = null,
+        [CallerLineNumber] int sourceLine = 0,
+        [CallerMemberName] string? sourceMember = null,
+        string[]? tags = null)
+        => _manager.SubscribeOnce(_eventType, handler, priority, sourceFile, sourceLine, sourceMember, tags);
 }
 
 /// <summary>
@@ -104,4 +141,41 @@ public readonly struct EventAccessor<TEnum, TArgs> where TEnum : struct, Enum
         accessor._manager.RemoveDelegate(accessor._eventType, handler);
         return accessor;
     }
+
+    /// <summary>
+    /// Subscribes a typed handler to the event. Supports priority, tags, and source location capture.
+    /// Dispose the returned container to unsubscribe.
+    /// </summary>
+    public EventDelegateContainer<TEnum, TArgs> Subscribe(
+        Action<TArgs> handler, EventPriority priority = default,
+        [CallerFilePath] string? sourceFile = null,
+        [CallerLineNumber] int sourceLine = 0,
+        [CallerMemberName] string? sourceMember = null,
+        string[]? tags = null)
+        => _manager.AddNewDelegate<TArgs>(_eventType, handler, priority, sourceFile, sourceLine, sourceMember, false, tags);
+
+    /// <summary>
+    /// Subscribes a typed async handler to the event. Supports priority, tags, and source location capture.
+    /// Dispose the returned container to unsubscribe.
+    /// </summary>
+    public AsyncEventDelegateContainer<TEnum, TArgs> SubscribeAsync(
+        Func<TArgs, Task> handler, EventPriority priority = default,
+        [CallerFilePath] string? sourceFile = null,
+        [CallerLineNumber] int sourceLine = 0,
+        [CallerMemberName] string? sourceMember = null,
+        string[]? tags = null)
+        => _manager.AddNewAsyncDelegate<TArgs>(_eventType, handler, priority, sourceFile, sourceLine, sourceMember, false, tags);
+
+    /// <summary>
+    /// Subscribes a typed handler that automatically unsubscribes after one invocation.
+    /// </summary>
+    public OneTimeEventDelegateContainer<TEnum, TArgs> SubscribeOnce(
+        Action<TArgs> handler, EventPriority priority = default,
+        [CallerFilePath] string? sourceFile = null,
+        [CallerLineNumber] int sourceLine = 0,
+        [CallerMemberName] string? sourceMember = null,
+        string[]? tags = null)
+        => _manager.SubscribeOnce<TArgs>(_eventType, handler, priority, sourceFile, sourceLine, sourceMember, tags);
+}
+
 }

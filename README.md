@@ -50,7 +50,7 @@ GameEvents.OnScoreChanged += args =>
     Console.WriteLine($"Score changed: {args.OldScore} → {args.NewScore}");
 
 // Or with priority and disposable handle
-using var sub = GameEvents.SubscribeOnScoreChanged(
+using var sub = GameEvents.OnScoreChanged.Subscribe(
     args => HandleScore(args), 
     priority: -50);
 ```

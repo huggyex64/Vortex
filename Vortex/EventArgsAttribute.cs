@@ -3,7 +3,8 @@
 
 using System;
 
-namespace Vortex;
+namespace Vortex {
+
 
 /// <summary>
 /// Declares the canonical <c>TArgs</c> type for an event enum value.
@@ -23,4 +24,6 @@ public sealed class EventArgsAttribute : Attribute
     {
         ArgsType = argsType ?? throw new ArgumentNullException(nameof(argsType));
     }
+}
+
 }

@@ -62,7 +62,7 @@ public class GeneratedEventTests
     public void SubscribeOnce_ShouldWork()
     {
         int callCount = 0;
-        TestDomain.SubscribeOnTestEventOnce(() => callCount++);
+        TestDomain.OnTestEvent.SubscribeOnce(() => callCount++);
         
         TestDomain.InvokeOnTestEvent();
         TestDomain.InvokeOnTestEvent();

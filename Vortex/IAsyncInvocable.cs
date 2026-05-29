@@ -3,7 +3,8 @@
 
 using System.Threading.Tasks;
 
-namespace Vortex;
+namespace Vortex {
+
 
 /// <summary>
 /// Interface for typed, async invocation of an event handler.
@@ -14,4 +15,6 @@ namespace Vortex;
 public interface IAsyncInvocable<in TArgs>
 {
     Task InvokeAsync(TArgs args);
+}
+
 }

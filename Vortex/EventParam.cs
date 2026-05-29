@@ -1,9 +1,12 @@
 // This file is part of the Vortex Event System
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
-namespace Vortex;
+namespace Vortex {
+
 
 /// <summary>
 /// A zero-size struct used as <c>TArgs</c> for parameterless events.
 /// </summary>
 public readonly struct Unit;
+
+}

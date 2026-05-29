@@ -3,7 +3,8 @@
 
 using System;
 
-namespace Vortex;
+namespace Vortex {
+
 
 /// <summary>
 /// Configurable logging hooks for the event system.
@@ -23,4 +24,6 @@ public static class EventSystemDiagnostics
     /// Called for error-level diagnostic messages (e.g. type-mismatch on invoke).
     /// </summary>
     public static Action<string>? LogError { get; set; }
+}
+
 }

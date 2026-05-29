@@ -1,7 +1,8 @@
 // This file is part of the Vortex Event System
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
-namespace Vortex;
+namespace Vortex {
+
 
 /// <summary>
 /// Interface for typed, zero-cast invocation of an event handler.
@@ -11,4 +12,6 @@ namespace Vortex;
 public interface IInvocable<in TArgs>
 {
     void Invoke(TArgs args);
+}
+
 }

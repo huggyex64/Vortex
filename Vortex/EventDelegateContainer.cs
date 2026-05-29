@@ -1,7 +1,8 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace Vortex;
+namespace Vortex {
+
 
 /// <summary>
 /// Non-generic base class for delegate containers, enabling heterogeneous storage
@@ -284,4 +285,6 @@ public sealed class OneTimeParameterlessEventDelegateContainer<T> : EventDelegat
         _action?.Invoke();
         Dispose();
     }
+}
+
 }

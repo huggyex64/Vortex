@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 
 
-namespace Vortex;
+namespace Vortex {
+
 
 public interface IEventManagerHolder<T> where T : struct, Enum
 {
@@ -44,4 +45,6 @@ public static class EventManagerExtensions
             holder?.EventManager.InvokeEvent(eventType);
         }
     }
+}
+
 }

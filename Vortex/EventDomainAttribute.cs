@@ -3,13 +3,15 @@
 
 using System;
 
-namespace Vortex;
+namespace Vortex {
+
 
 /// <summary>
 /// Marks a <c>partial class</c> as an event domain.
 /// The source generator will produce a backing enum, an <see cref="EventManager{T}"/>,
-/// and typed <c>Invoke</c> / <c>Subscribe</c> / <c>GlobalInvoke</c> convenience methods
-/// for each <see cref="EventKey"/> field declared in the class.
+/// event accessor properties, and typed <c>Invoke*</c> / <c>GlobalInvoke*</c> convenience methods
+/// for each <see cref="EventKey"/> field. Advanced subscriptions are available on the accessors
+/// via <c>.Subscribe(...)</c> etc.
 /// <para>
 /// <b>Static domains</b> (the class is <c>static</c>) produce a single shared
 /// <see cref="EventManager{T}"/> and static convenience methods — ideal for
@@ -60,4 +62,6 @@ public sealed class EventDomainAttribute : Attribute
     /// <see cref="EventManager{T}.GlobalInvokeEvent"/> calls.
     /// </summary>
     public bool Global { get; set; }
+}
+
 }

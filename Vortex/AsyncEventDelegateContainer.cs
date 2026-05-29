@@ -4,7 +4,8 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Vortex;
+namespace Vortex {
+
 
 /// <summary>
 /// Typed delegate container wrapping a <see cref="Func{TArgs, Task}"/> for async
@@ -126,4 +127,6 @@ public ParameterlessAsyncEventDelegateContainer(T eventType, Func<Task> asyncAct
         if (!Enabled) return Task.CompletedTask;
         return _asyncAction?.Invoke() ?? Task.CompletedTask;
     }
+}
+
 }
